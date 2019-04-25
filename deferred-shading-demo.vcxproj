@@ -114,7 +114,7 @@
     <ClInclude Include="d3dUtility.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="g-buffer.hlsl">
+    <None Include="gBuffer.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

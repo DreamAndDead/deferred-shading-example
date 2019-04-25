@@ -9,9 +9,9 @@ IDirect3DDevice9* Device = 0;
 const int Width  = 640;
 const int Height = 480;
  
-ID3DXMesh* Objects[4] = {NULL, NULL, NULL, NULL};
-D3DXMATRIX  Worlds[4];
-D3DMATERIAL9 Mtrls[4];
+ID3DXMesh* ball = NULL;
+
+ID3DXEffect* g_buffer_effect = 0;
 
 //
 // Framework Functions
@@ -22,44 +22,7 @@ bool Setup()
 	// Create objects.
 	//
 
-	D3DXCreateSphere(Device, 1.0f, 20, 20, &Objects[0], 0);
-	D3DXCreateSphere(Device, 1.0f, 20, 20, &Objects[1], 0);
-	D3DXCreateSphere(Device, 1.0f, 20, 20, &Objects[2], 0);
-	D3DXCreateSphere(Device, 1.0f, 20, 20, &Objects[3], 0);
-
-	//
-	// Build world matrices - position the objects in world space.
-	//
-
-	D3DXMatrixTranslation(&Worlds[0],  0.0f,  2.0f, 0.0f);
-	D3DXMatrixTranslation(&Worlds[1],  0.0f, -2.0f, 0.0f);
-	D3DXMatrixTranslation(&Worlds[2], -3.0f,  0.0f, 0.0f);
-	D3DXMatrixTranslation(&Worlds[3],  3.0f,  0.0f, 0.0f);
-
-	//
-	// Setup the object's materials.
-	//
-
-	Mtrls[0] = d3d::WHITE_MTRL;
-	Mtrls[1] = d3d::WHITE_MTRL;
-	Mtrls[2] = d3d::WHITE_MTRL;
-	Mtrls[3] = d3d::WHITE_MTRL;
-
-	//
-	// Setup a point light.  Note that the point light
-	// is positioned at the origin.
-	//
-
-	D3DXVECTOR3 pos(3.0f, 0.0f, 0.0f);
-	D3DXCOLOR   c = d3d::WHITE;
-	D3DLIGHT9 point = d3d::InitPointLight(&pos, &c);
-
-	//
-	// Set and Enable the light.
-	//
-
-	Device->SetLight(0, &point);
-	Device->LightEnable(0, true);
+	D3DXCreateSphere(Device, 1.0f, 20, 20, &ball, 0);
 
 	//
 	// Set lighting related render states.
@@ -68,37 +31,21 @@ bool Setup()
 	Device->SetRenderState(D3DRS_NORMALIZENORMALS, true);
 	Device->SetRenderState(D3DRS_SPECULARENABLE, true);
 
-	//
-	// Set the projection matrix.
-	//
-
-	D3DXMATRIX proj;
-	D3DXMatrixPerspectiveFovLH(
-			&proj,
-			D3DX_PI * 0.25f, // 45 - degree
-			(float)Width / (float)Height,
-			1.0f,
-			1000.0f);
-	Device->SetTransform(D3DTS_PROJECTION, &proj);
-
 
 	// compile shader
 
 	HRESULT hr;
-	ID3DXConstantTable* TranformConstantTable = 0;
-	ID3DXBuffer* shader = 0;
 	ID3DXBuffer* errorBuffer = 0;
 
-	hr = D3DXCompileShaderFromFile(
-		"g-buffer.hlsl",
+	hr = D3DXCreateEffectFromFile(
+		Device,
+		"GBuffer.hlsl",
 		0,
 		0,
-		"Main",
-		"vs_3_0",
 		D3DXSHADER_DEBUG,
-		&shader,
-		&errorBuffer,
-		&TranformConstantTable
+		0,
+		&g_buffer_effect,
+		&errorBuffer
 	);
 
 	if (errorBuffer) {
@@ -111,13 +58,24 @@ bool Setup()
 		return false;
 	}
 
+	D3DVERTEXELEMENT9 decl[] = {
+		{ 0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0 },
+		{ 0, 12, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_NORMAL, 0},
+		D3DDECL_END(),
+	};
+
+	IDirect3DVertexDeclaration9* _decl = 0;
+	hr = Device->CreateVertexDeclaration(decl, &_decl);
+
+	Device->SetVertexDeclaration(_decl);
+
 	return true;
 }
 
 void Cleanup()
 {
 	for(int i = 0; i < 4; i++)
-		d3d::Release<ID3DXMesh*>(Objects[i]);
+		d3d::Release<ID3DXMesh*>(ball);
 }
 
 bool Display(float timeDelta)
@@ -143,13 +101,6 @@ bool Display(float timeDelta)
 		if( ::GetAsyncKeyState(VK_DOWN) & 0x8000f )
 			height -= 5.0f * timeDelta;
 
-		D3DXVECTOR3 position( cosf(angle) * 7.0f, height, sinf(angle) * 7.0f );
-		D3DXVECTOR3 target(0.0f, 0.0f, 0.0f);
-		D3DXVECTOR3 up(0.0f, 1.0f, 0.0f);
-		D3DXMATRIX V;
-		D3DXMatrixLookAtLH(&V, &position, &target, &up);
-
-		Device->SetTransform(D3DTS_VIEW, &V);
 
 		//
 		// Draw the scene:
@@ -157,14 +108,58 @@ bool Display(float timeDelta)
 		Device->Clear(0, 0, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0x00000000, 1.0f, 0);
 		Device->BeginScene();
 
-		for(int i = 0; i < 4; i++)
+		D3DXHANDLE hTech = 0;
+		hTech = g_buffer_effect->GetTechniqueByName("gbuffer");
+
+
+		// TODO: set parameters here
+		D3DXMATRIX world;
+		D3DXMatrixTranslation(&world,  0.0f,  2.0f, 0.0f);
+
+
+		D3DXVECTOR3 position( cosf(angle) * 7.0f, height, sinf(angle) * 7.0f );
+		D3DXVECTOR3 target(0.0f, 0.0f, 0.0f);
+		D3DXVECTOR3 up(0.0f, 1.0f, 0.0f);
+		D3DXMATRIX view;
+		D3DXMatrixLookAtLH(&view, &position, &target, &up);
+
+		//
+		// Set the projection matrix.
+		//
+
+		D3DXMATRIX proj;
+		D3DXMatrixPerspectiveFovLH(
+				&proj,
+				D3DX_PI * 0.25f, // 45 - degree
+				(float)Width / (float)Height,
+				1.0f,
+				1000.0f);
+
+
+		D3DXMATRIX m = world * view * proj;
+
+		D3DXHANDLE matrixHandle = g_buffer_effect->GetParameterByName(0, "WorldViewProj");
+		g_buffer_effect->SetMatrix(matrixHandle, &m);
+
+
+		g_buffer_effect->SetTechnique(hTech);
+
+		UINT numPasses = 0;
+		g_buffer_effect->Begin(&numPasses, 0);
+
+		for (int i = 0; i < numPasses; i++)
 		{
-			// set material and world matrix for i-th object, then render
-			// the i-th object.
-			Device->SetMaterial(&Mtrls[i]);
-			Device->SetTransform(D3DTS_WORLD, &Worlds[i]);
-			Objects[i]->DrawSubset(0);
+			g_buffer_effect->BeginPass(i);
+
+
+			// draw
+			ball->DrawSubset(0);
+
+			g_buffer_effect->EndPass();
 		}
+
+		g_buffer_effect->End();
+
 
 		Device->EndScene();
 		Device->Present(0, 0, 0, 0);
