@@ -11,32 +11,26 @@ const int Height = 480;
  
 ID3DXMesh* ball = NULL;
 
+HRESULT hr;
 ID3DXEffect* g_buffer_effect = 0;
+ID3DXBuffer* errorBuffer = 0;
 
-//
-// Framework Functions
-//
-bool Setup()
-{
-	//
-	// Create objects.
-	//
+IDirect3DTexture9* normalTex = 0;
+IDirect3DSurface9* normalSurface = 0;
 
+IDirect3DTexture9* depthTex = 0;
+IDirect3DSurface9* depthSurface = 0;
+
+IDirect3DTexture9* diffuseTex = 0;
+IDirect3DSurface9* diffuseSurface = 0;
+
+IDirect3DTexture9* specularTex = 0;
+IDirect3DSurface9* specularSurface = 0;
+
+void GBufferPhase() {
 	D3DXCreateSphere(Device, 1.0f, 20, 20, &ball, 0);
 
-	//
-	// Set lighting related render states.
-	//
-
-	Device->SetRenderState(D3DRS_NORMALIZENORMALS, true);
-	Device->SetRenderState(D3DRS_SPECULARENABLE, true);
-
-
 	// compile shader
-
-	HRESULT hr;
-	ID3DXBuffer* errorBuffer = 0;
-
 	hr = D3DXCreateEffectFromFile(
 		Device,
 		"GBuffer.hlsl",
@@ -55,7 +49,6 @@ bool Setup()
 
 	if (FAILED(hr)) {
 		::MessageBox(0, "D3DXCreateEffectFromFile() - Failed", 0, 0);
-		return false;
 	}
 
 	D3DVERTEXELEMENT9 decl[] = {
@@ -69,6 +62,71 @@ bool Setup()
 
 	Device->SetVertexDeclaration(_decl);
 
+	hr = D3DXCreateTexture(
+		Device,
+		Width,
+		Height,
+		D3DX_DEFAULT,
+		D3DUSAGE_RENDERTARGET,
+		D3DFMT_A8R8G8B8,
+		D3DPOOL_DEFAULT,
+		&normalTex
+	);
+
+	normalTex->GetSurfaceLevel(0, &normalSurface);
+	Device->SetRenderTarget(0, normalSurface);
+
+	hr = D3DXCreateTexture(
+		Device,
+		Width,
+		Height,
+		D3DX_DEFAULT,
+		D3DUSAGE_RENDERTARGET,
+		D3DFMT_A8R8G8B8,
+		D3DPOOL_DEFAULT,
+		&depthTex
+	);
+
+	depthTex->GetSurfaceLevel(0, &depthSurface);
+	Device->SetRenderTarget(1, depthSurface);
+
+	hr = D3DXCreateTexture(
+		Device,
+		Width,
+		Height,
+		D3DX_DEFAULT,
+		D3DUSAGE_RENDERTARGET,
+		D3DFMT_A8R8G8B8,
+		D3DPOOL_DEFAULT,
+		&diffuseTex
+	);
+
+	diffuseTex->GetSurfaceLevel(0, &diffuseSurface);
+	Device->SetRenderTarget(2, diffuseSurface);
+
+	hr = D3DXCreateTexture(
+		Device,
+		Width,
+		Height,
+		D3DX_DEFAULT,
+		D3DUSAGE_RENDERTARGET,
+		D3DFMT_A8R8G8B8,
+		D3DPOOL_DEFAULT,
+		&specularTex
+	);
+
+	specularTex->GetSurfaceLevel(0, &specularSurface);
+	Device->SetRenderTarget(3, specularSurface);
+}
+
+
+//
+// Framework Functions
+//
+bool Setup()
+{
+
+	GBufferPhase();
 	return true;
 }
 

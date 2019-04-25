@@ -29,7 +29,8 @@ struct VS_OUTPUT
 
 struct PS_OUTPUT
 {
-    float4 color : COLOR;
+    float4 color : COLOR0;
+    float4 n : COLOR1;
 };
 
 VS_OUTPUT VS_Main(VS_INPUT input)
@@ -48,6 +49,8 @@ PS_OUTPUT PS_Main(VS_OUTPUT input)
     PS_OUTPUT output = (PS_OUTPUT) 0;
     output.color = Blue;
 
+    output.n = Blue;
+
     return output;
 }
 
@@ -57,7 +60,5 @@ Technique gbuffer
     {
         VertexShader = compile vs_3_0 VS_Main();
         PixelShader = compile ps_3_0 PS_Main();
-
-        FillMode = WIREFRAME;
     }
 }

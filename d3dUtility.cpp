@@ -1,15 +1,3 @@
-//////////////////////////////////////////////////////////////////////////////////////////////////
-// 
-// File: d3dUtility.cpp
-// 
-// Author: Frank Luna (C) All Rights Reserved
-//
-// System: AMD Athlon 1800+ XP, 512 DDR, Geforce 3, Windows XP, MSVC++ 7.0 
-//
-// Desc: Provides utility functions for simplifying common tasks.
-//          
-//////////////////////////////////////////////////////////////////////////////////////////////////
-
 #include "d3dUtility.h"
 
 bool d3d::InitD3D(
@@ -115,23 +103,9 @@ bool d3d::InitD3D(
 
 	if( FAILED(hr) )
 	{
-		// try again using a 16-bit depth buffer
-		d3dpp.AutoDepthStencilFormat = D3DFMT_D16;
-		
-		hr = d3d9->CreateDevice(
-			D3DADAPTER_DEFAULT,
-			deviceType,
-			hwnd,
-			vp,
-			&d3dpp,
-			device);
-
-		if( FAILED(hr) )
-		{
-			d3d9->Release(); // done with d3d9 object
-			::MessageBox(0, "CreateDevice() - FAILED", 0, 0);
-			return false;
-		}
+		d3d9->Release(); // done with d3d9 object
+		::MessageBox(0, "CreateDevice() - FAILED", 0, 0);
+		return false;
 	}
 
 	d3d9->Release(); // done with d3d9 object
@@ -165,72 +139,4 @@ int d3d::EnterMsgLoop( bool (*ptr_display)(float timeDelta) )
     }
     return msg.wParam;
 }
-
-D3DLIGHT9 d3d::InitDirectionalLight(D3DXVECTOR3* direction, D3DXCOLOR* color)
-{
-	D3DLIGHT9 light;
-	::ZeroMemory(&light, sizeof(light));
-
-	light.Type      = D3DLIGHT_DIRECTIONAL;
-	light.Ambient   = *color * 0.6f;
-	light.Diffuse   = *color;
-	light.Specular  = *color * 0.6f;
-	light.Direction = *direction;
-
-	return light;
-}
-
-D3DLIGHT9 d3d::InitPointLight(D3DXVECTOR3* position, D3DXCOLOR* color)
-{
-	D3DLIGHT9 light;
-	::ZeroMemory(&light, sizeof(light));
-
-	light.Type      = D3DLIGHT_POINT;
-	light.Ambient   = *color * 0.6f;
-	light.Diffuse   = *color;
-	light.Specular  = *color * 0.6f;
-	light.Position  = *position;
-	light.Range        = 1000.0f;
-	light.Falloff      = 1.0f;
-	light.Attenuation0 = 1.0f;
-	light.Attenuation1 = 0.0f;
-	light.Attenuation2 = 0.0f;
-
-	return light;
-}
-
-D3DLIGHT9 d3d::InitSpotLight(D3DXVECTOR3* position, D3DXVECTOR3* direction, D3DXCOLOR* color)
-{
-	D3DLIGHT9 light;
-	::ZeroMemory(&light, sizeof(light));
-
-	light.Type      = D3DLIGHT_SPOT;
-	light.Ambient   = *color * 0.0f;
-	light.Diffuse   = *color;
-	light.Specular  = *color * 0.6f;
-	light.Position  = *position;
-	light.Direction = *direction;
-	light.Range        = 1000.0f;
-	light.Falloff      = 1.0f;
-	light.Attenuation0 = 1.0f;
-	light.Attenuation1 = 0.0f;
-	light.Attenuation2 = 0.0f;
-	light.Theta        = 0.4f;
-	light.Phi          = 0.9f;
-
-	return light;
-}
-
-D3DMATERIAL9 d3d::InitMtrl(D3DXCOLOR a, D3DXCOLOR d, D3DXCOLOR s, D3DXCOLOR e, float p)
-{
-	D3DMATERIAL9 mtrl;
-	mtrl.Ambient  = a;
-	mtrl.Diffuse  = d;
-	mtrl.Specular = s;
-	mtrl.Emissive = e;
-	mtrl.Power    = p;
-	return mtrl;
-}
-
-
 
