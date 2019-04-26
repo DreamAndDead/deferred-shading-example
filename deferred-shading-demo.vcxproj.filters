@@ -28,7 +28,10 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="gBuffer.hlsl">
+    <None Include="PointLight.hlsl">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="GBuffer.hlsl">
       <Filter>Source Files</Filter>
     </None>
   </ItemGroup>

@@ -13,7 +13,10 @@ ID3DXMesh* ball = NULL;
 
 HRESULT hr;
 ID3DXEffect* g_buffer_effect = 0;
+ID3DXEffect* point_light_effect = 0;
 ID3DXBuffer* errorBuffer = 0;
+
+IDirect3DSurface9* originRenderTarget = 0;
 
 IDirect3DTexture9* normalTex = 0;
 IDirect3DSurface9* normalSurface = 0;
@@ -27,10 +30,11 @@ IDirect3DSurface9* diffuseSurface = 0;
 IDirect3DTexture9* specularTex = 0;
 IDirect3DSurface9* specularSurface = 0;
 
-void GBufferPhase() {
+
+bool Setup()
+{
 	D3DXCreateSphere(Device, 1.0f, 20, 20, &ball, 0);
 
-	// compile shader
 	hr = D3DXCreateEffectFromFile(
 		Device,
 		"GBuffer.hlsl",
@@ -48,19 +52,39 @@ void GBufferPhase() {
 	}
 
 	if (FAILED(hr)) {
-		::MessageBox(0, "D3DXCreateEffectFromFile() - Failed", 0, 0);
+		::MessageBox(0, "D3DXCreateEffectFromFile( GBuffer.hlsl ) - Failed", 0, 0);
+		return false;
 	}
 
-	D3DVERTEXELEMENT9 decl[] = {
-		{ 0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0 },
-		{ 0, 12, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_NORMAL, 0},
-		D3DDECL_END(),
-	};
+	hr = D3DXCreateEffectFromFile(
+		Device,
+		"PointLight.hlsl",
+		0,
+		0,
+		D3DXSHADER_DEBUG,
+		0,
+		&point_light_effect,
+		&errorBuffer
+	);
 
-	IDirect3DVertexDeclaration9* _decl = 0;
-	hr = Device->CreateVertexDeclaration(decl, &_decl);
+	if (errorBuffer) {
+		::MessageBox(0, (char*)errorBuffer->GetBufferPointer(), 0, 0);
+		d3d::Release<ID3DXBuffer*>(errorBuffer);
+	}
 
-	Device->SetVertexDeclaration(_decl);
+	if (FAILED(hr)) {
+		::MessageBox(0, "D3DXCreateEffectFromFile( PointLight.hlsl ) - Failed", 0, 0);
+		return false;
+	}
+
+	return true;
+}
+
+void setMRT()
+{
+	// save origin render target
+	hr = Device->GetRenderTarget(0, &originRenderTarget);
+
 
 	hr = D3DXCreateTexture(
 		Device,
@@ -119,31 +143,83 @@ void GBufferPhase() {
 	Device->SetRenderTarget(3, specularSurface);
 }
 
-
-//
-// Framework Functions
-//
-bool Setup()
+void resumeRender()
 {
-
-	GBufferPhase();
-	return true;
+	Device->SetRenderTarget(0, originRenderTarget);
+	Device->SetRenderTarget(1, NULL);
+	Device->SetRenderTarget(2, NULL);
+	Device->SetRenderTarget(3, NULL);
 }
 
-void Cleanup()
+void drawScreenQuad()
 {
-	for(int i = 0; i < 4; i++)
-		d3d::Release<ID3DXMesh*>(ball);
+	// define vertex list
+	struct Vertex {
+		float x, y, z, w;
+	};
+
+	/*
+    -1,1	       1,1
+	v0             v1
+               
+               
+               
+	v2             v3
+	-1,-1          1,-1
+	*/
+	
+	Vertex v0 = {
+		-1, 1, 0, 1,
+	};
+	Vertex v1 = {
+		1, 1, 0, 1,
+	};
+	Vertex v2 = {
+		-1, -1, 0, 1,
+	};
+	Vertex v3 = {
+		1, -1, 0, 1,
+	};
+
+	// lock buffer and draw it
+	IDirect3DVertexBuffer9* vb = 0;
+	Device->CreateVertexBuffer(
+		6 * sizeof(Vertex),
+		0,
+		D3DFVF_XYZW,
+		D3DPOOL_MANAGED,
+		&vb,
+		0
+	);
+
+	Vertex* vertices;
+	vb->Lock(0, 0, (void**)&vertices, 0);
+
+	vertices[0] = v0;
+	vertices[1] = v1;
+	vertices[2] = v2;
+	vertices[3] = v1;
+	vertices[4] = v3;
+	vertices[5] = v2;
+
+	vb->Unlock();
+
+	Device->SetStreamSource(0, vb, 0, sizeof(Vertex));
+	Device->SetFVF(D3DFVF_XYZW);
+	Device->DrawPrimitive(D3DPT_TRIANGLELIST, 0, 2);
+}
+
+void drawBall()
+{
+	Device->SetFVF(D3DFVF_XYZW | D3DFVF_NORMAL);
+
+	ball->DrawSubset(0);
 }
 
 bool Display(float timeDelta)
 {
 	if( Device )
 	{
-		// 
-		// Update the scene: update camera position.
-		//
-
 		static float angle  = (3.0f * D3DX_PI) / 2.0f;
 		static float height = 5.0f;
 	
@@ -160,30 +236,14 @@ bool Display(float timeDelta)
 			height -= 5.0f * timeDelta;
 
 
-		//
-		// Draw the scene:
-		//
-		Device->Clear(0, 0, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0x00000000, 1.0f, 0);
-		Device->BeginScene();
-
-		D3DXHANDLE hTech = 0;
-		hTech = g_buffer_effect->GetTechniqueByName("gbuffer");
-
-
-		// TODO: set parameters here
 		D3DXMATRIX world;
 		D3DXMatrixTranslation(&world,  0.0f,  2.0f, 0.0f);
-
 
 		D3DXVECTOR3 position( cosf(angle) * 7.0f, height, sinf(angle) * 7.0f );
 		D3DXVECTOR3 target(0.0f, 0.0f, 0.0f);
 		D3DXVECTOR3 up(0.0f, 1.0f, 0.0f);
 		D3DXMATRIX view;
 		D3DXMatrixLookAtLH(&view, &position, &target, &up);
-
-		//
-		// Set the projection matrix.
-		//
 
 		D3DXMATRIX proj;
 		D3DXMatrixPerspectiveFovLH(
@@ -200,18 +260,24 @@ bool Display(float timeDelta)
 		g_buffer_effect->SetMatrix(matrixHandle, &m);
 
 
+		setMRT();
+
+		Device->Clear(0, 0, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL, 0x00000000, 1.0f, 0);
+		Device->BeginScene();
+
+		D3DXHANDLE hTech = 0;
+		UINT numPasses = 0;
+
+		hTech = g_buffer_effect->GetTechniqueByName("gbuffer");
 		g_buffer_effect->SetTechnique(hTech);
 
-		UINT numPasses = 0;
 		g_buffer_effect->Begin(&numPasses, 0);
 
 		for (int i = 0; i < numPasses; i++)
 		{
 			g_buffer_effect->BeginPass(i);
 
-
-			// draw
-			ball->DrawSubset(0);
+			drawBall();
 
 			g_buffer_effect->EndPass();
 		}
@@ -219,10 +285,41 @@ bool Display(float timeDelta)
 		g_buffer_effect->End();
 
 
+		resumeRender();
+
+		// TODO: pass render target texture here
+		D3DXHANDLE texHandle = point_light_effect->GetParameterByName(0, "diffuseTex");
+		point_light_effect->SetTexture(texHandle, diffuseTex);
+
+		hTech = point_light_effect->GetTechniqueByName("main");
+		point_light_effect->SetTechnique(hTech);
+
+		numPasses = 0;
+		point_light_effect->Begin(&numPasses, 0);
+
+		for (int i = 0; i < numPasses; i++)
+		{
+			point_light_effect->BeginPass(i);
+
+			drawScreenQuad();
+
+			point_light_effect->EndPass();
+		}
+
+		point_light_effect->End();
+
+
+
 		Device->EndScene();
 		Device->Present(0, 0, 0, 0);
 	}
 	return true;
+}
+
+void Cleanup()
+{
+	for(int i = 0; i < 4; i++)
+		d3d::Release<ID3DXMesh*>(ball);
 }
 
 

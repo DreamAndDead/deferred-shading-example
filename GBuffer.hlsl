@@ -1,17 +1,5 @@
-// Global variab to store a combined view and projection transformation matrix.
-
 
 matrix WorldViewProj;
-
-texture Tex;
-
-sampler S0 = sampler_state
-{
-    Texture = (Tex);
-    MinFilter = LINEAR;
-    MagFilter = LINEAR;
-    MipFilter = LINEAR;
-};
 
 float4 Blue = { .0f, .0f, 1.0f, 1.0f };
 
@@ -24,7 +12,6 @@ struct VS_INPUT
 struct VS_OUTPUT
 {
     float4 position : POSITION;
-    float4 diffuse : COLOR;
 };
 
 struct PS_OUTPUT
@@ -39,8 +26,6 @@ VS_OUTPUT VS_Main(VS_INPUT input)
 
     output.position = mul(input.position, WorldViewProj);
 
-    output.diffuse = Blue;
-
     return output;
 };
 
@@ -48,7 +33,6 @@ PS_OUTPUT PS_Main(VS_OUTPUT input)
 {
     PS_OUTPUT output = (PS_OUTPUT) 0;
     output.color = Blue;
-
     output.n = Blue;
 
     return output;
