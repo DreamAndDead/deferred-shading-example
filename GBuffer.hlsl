@@ -1,4 +1,3 @@
-
 matrix WorldViewProj;
 
 float4 Blue = { .0f, .0f, 1.0f, 1.0f };
@@ -16,8 +15,10 @@ struct VS_OUTPUT
 
 struct PS_OUTPUT
 {
-    float4 color : COLOR0;
-    float4 n : COLOR1;
+    float4 normal : COLOR0;
+    float4 depth : COLOR1;
+    float4 diffuse : COLOR2;
+    float4 specular : COLOR3;
 };
 
 VS_OUTPUT VS_Main(VS_INPUT input)
@@ -32,13 +33,15 @@ VS_OUTPUT VS_Main(VS_INPUT input)
 PS_OUTPUT PS_Main(VS_OUTPUT input)
 {
     PS_OUTPUT output = (PS_OUTPUT) 0;
-    output.color = Blue;
-    output.n = Blue;
+    output.normal = Blue;
+    output.depth = Blue;
+    output.diffuse = Blue;
+    output.specular = Blue;
 
     return output;
 }
 
-Technique gbuffer
+Technique main
 {
     Pass P0
     {

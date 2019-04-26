@@ -259,16 +259,16 @@ bool Display(float timeDelta)
 		D3DXHANDLE matrixHandle = g_buffer_effect->GetParameterByName(0, "WorldViewProj");
 		g_buffer_effect->SetMatrix(matrixHandle, &m);
 
-
-		setMRT();
-
 		Device->Clear(0, 0, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL, 0x00000000, 1.0f, 0);
 		Device->BeginScene();
+
+
+		setMRT();
 
 		D3DXHANDLE hTech = 0;
 		UINT numPasses = 0;
 
-		hTech = g_buffer_effect->GetTechniqueByName("gbuffer");
+		hTech = g_buffer_effect->GetTechniqueByName("main");
 		g_buffer_effect->SetTechnique(hTech);
 
 		g_buffer_effect->Begin(&numPasses, 0);

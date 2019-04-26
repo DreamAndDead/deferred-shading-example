@@ -1,14 +1,16 @@
-float4 Blue = { .0f, .0f, 1.0f, 1.0f };
-
 texture diffuseTex;
 
-sampler S0 = sampler_state
+sampler diffuseSampler = sampler_state
 {
     Texture = (diffuseTex);
     MinFilter = LINEAR;
     MagFilter = LINEAR;
-    MipFilter = LINEAR;
+    MipFilter = None;
+    AddressU = clamp;
+    AddressV = clamp;
 };
+
+
 
 struct VS_INPUT
 {
@@ -18,6 +20,7 @@ struct VS_INPUT
 struct VS_OUTPUT
 {
     float4 position : POSITION;
+    float2 texCoord : TEXCOORD0;
 };
 
 struct PS_OUTPUT
@@ -29,7 +32,8 @@ VS_OUTPUT VS_Main(VS_INPUT input)
 {
     VS_OUTPUT output;
 
-    output.position = float4(1, 0, 0, 1);
+    output.position = input.position;
+    output.texCoord = input.position.xy * float2(0.5, -0.5) + float2(0.5, 0.5);
 
     return output;
 };
@@ -37,9 +41,8 @@ VS_OUTPUT VS_Main(VS_INPUT input)
 PS_OUTPUT PS_Main(VS_OUTPUT input)
 {
     PS_OUTPUT output;
-    float2 pos = input.position.xy;
 
-    output.color = tex2D(S0, pos);
+    output.color = tex2D(diffuseSampler, input.texCoord);
 
     return output;
 }
@@ -52,6 +55,6 @@ Technique main
         PixelShader = compile ps_3_0 PS_Main();
 
         ZWriteEnable = 0;
-        ZFunc = LESS;
+        ZFunc = ALWAYS;
     }
 }
