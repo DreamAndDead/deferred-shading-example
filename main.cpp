@@ -77,15 +77,6 @@ bool Setup()
 		return false;
 	}
 
-	return true;
-}
-
-void setMRT()
-{
-	// save origin render target
-	hr = Device->GetRenderTarget(0, &originRenderTarget);
-
-
 	hr = D3DXCreateTexture(
 		Device,
 		Width,
@@ -98,7 +89,6 @@ void setMRT()
 	);
 
 	normalTex->GetSurfaceLevel(0, &normalSurface);
-	Device->SetRenderTarget(0, normalSurface);
 
 	hr = D3DXCreateTexture(
 		Device,
@@ -112,7 +102,6 @@ void setMRT()
 	);
 
 	depthTex->GetSurfaceLevel(0, &depthSurface);
-	Device->SetRenderTarget(1, depthSurface);
 
 	hr = D3DXCreateTexture(
 		Device,
@@ -126,7 +115,6 @@ void setMRT()
 	);
 
 	diffuseTex->GetSurfaceLevel(0, &diffuseSurface);
-	Device->SetRenderTarget(2, diffuseSurface);
 
 	hr = D3DXCreateTexture(
 		Device,
@@ -140,6 +128,18 @@ void setMRT()
 	);
 
 	specularTex->GetSurfaceLevel(0, &specularSurface);
+
+	return true;
+}
+
+void setMRT()
+{
+	// save origin render target
+	Device->GetRenderTarget(0, &originRenderTarget);
+
+	Device->SetRenderTarget(0, normalSurface);
+	Device->SetRenderTarget(1, depthSurface);
+	Device->SetRenderTarget(2, diffuseSurface);
 	Device->SetRenderTarget(3, specularSurface);
 }
 
@@ -220,7 +220,7 @@ bool Display(float timeDelta)
 {
 	if( Device )
 	{
-		static float angle  = (3.0f * D3DX_PI) / 2.0f;
+		static float angle  = D3DX_PI;
 		static float height = 5.0f;
 	
 		if( ::GetAsyncKeyState(VK_LEFT) & 0x8000f )
@@ -237,7 +237,7 @@ bool Display(float timeDelta)
 
 
 		D3DXMATRIX world;
-		D3DXMatrixTranslation(&world,  0.0f,  2.0f, 0.0f);
+		D3DXMatrixTranslation(&world,  1.0f,  2.0f, 3.0f);
 
 		D3DXVECTOR3 position( cosf(angle) * 7.0f, height, sinf(angle) * 7.0f );
 		D3DXVECTOR3 target(0.0f, 0.0f, 0.0f);
@@ -245,25 +245,29 @@ bool Display(float timeDelta)
 		D3DXMATRIX view;
 		D3DXMatrixLookAtLH(&view, &position, &target, &up);
 
+		// https://docs.microsoft.com/en-us/windows/desktop/direct3d9/d3dxmatrixperspectivefovlh
 		D3DXMATRIX proj;
 		D3DXMatrixPerspectiveFovLH(
 				&proj,
-				D3DX_PI * 0.25f, // 45 - degree
+				D3DX_PI * 0.5f, // 90 degree
 				(float)Width / (float)Height,
 				1.0f,
 				1000.0f);
 
 
-		D3DXMATRIX m = world * view * proj;
+		D3DXHANDLE worldHandle = g_buffer_effect->GetParameterByName(0, "world");
+		D3DXHANDLE viewHandle = g_buffer_effect->GetParameterByName(0, "view");
+		D3DXHANDLE projHandle = g_buffer_effect->GetParameterByName(0, "proj");
 
-		D3DXHANDLE matrixHandle = g_buffer_effect->GetParameterByName(0, "WorldViewProj");
-		g_buffer_effect->SetMatrix(matrixHandle, &m);
-
-		Device->Clear(0, 0, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL, 0x00000000, 1.0f, 0);
-		Device->BeginScene();
+		g_buffer_effect->SetMatrix(worldHandle, &world);
+		g_buffer_effect->SetMatrix(viewHandle, &view);
+		g_buffer_effect->SetMatrix(projHandle, &proj);
 
 
 		setMRT();
+
+		Device->Clear(0, 0, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL, 0x00000000, 1.0f, 0);
+		Device->BeginScene();
 
 		D3DXHANDLE hTech = 0;
 		UINT numPasses = 0;
@@ -287,11 +291,19 @@ bool Display(float timeDelta)
 
 		resumeRender();
 
-		// TODO: pass render target texture here
-		D3DXHANDLE texHandle = point_light_effect->GetParameterByName(0, "diffuseTex");
-		point_light_effect->SetTexture(texHandle, diffuseTex);
+		D3DXHANDLE normalHandle = point_light_effect->GetParameterByName(0, "normalTex");
+		D3DXHANDLE depthHandle = point_light_effect->GetParameterByName(0, "depthTex");
+		D3DXHANDLE diffuseHandle = point_light_effect->GetParameterByName(0, "diffuseTex");
+		D3DXHANDLE specularHandle = point_light_effect->GetParameterByName(0, "specularTex");
 
-		hTech = point_light_effect->GetTechniqueByName("main");
+		point_light_effect->SetTexture(normalHandle, normalTex);
+		point_light_effect->SetTexture(depthHandle, depthTex);
+		point_light_effect->SetTexture(diffuseHandle, diffuseTex);
+		point_light_effect->SetTexture(specularHandle, specularTex);
+
+		// TODO: pass a light inside
+
+		hTech = point_light_effect->GetTechniqueByName("Plain");
 		point_light_effect->SetTechnique(hTech);
 
 		numPasses = 0;
@@ -307,6 +319,8 @@ bool Display(float timeDelta)
 		}
 
 		point_light_effect->End();
+
+
 
 
 
