@@ -139,7 +139,7 @@ bool Setup()
 	Device->CreateVertexBuffer(
 		6 * sizeof(Vertex),
 		0,
-		D3DFVF_XYZW,
+		D3DFVF_XYZ,
 		D3DPOOL_MANAGED,
 		&vb,
 		0
@@ -156,16 +156,16 @@ bool Setup()
 	*/
 	
 	Vertex v0 = {
-		-1, 1, 0, 1,
+		-1, 1, 0
 	};
 	Vertex v1 = {
-		1, 1, 0, 1,
+		1, 1, 0
 	};
 	Vertex v2 = {
-		-1, -1, 0, 1,
+		-1, -1, 0
 	};
 	Vertex v3 = {
-		1, -1, 0, 1,
+		1, -1, 0
 	};
 
 	// lock buffer and draw it
@@ -206,14 +206,13 @@ void resumeRender()
 void drawScreenQuad()
 {
 	Device->SetStreamSource(0, vb, 0, sizeof(Vertex));
-	Device->SetFVF(D3DFVF_XYZW);
+	Device->SetFVF(D3DFVF_XYZ);
 	Device->DrawPrimitive(D3DPT_TRIANGLELIST, 0, 2);
 }
 
 void drawBall()
 {
-	Device->SetFVF(D3DFVF_XYZW | D3DFVF_NORMAL);
-
+	Device->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL);
 	ball->DrawSubset(0);
 }
 

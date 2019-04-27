@@ -2,7 +2,8 @@ matrix world;
 matrix view;
 matrix proj;
 
-float4 C = { .0f, .0f, 0.5f, 1.0f };
+float4 Blue = { .0f, .0f, 0.6f, 1.0f };
+float4 White = { 1.0f, 1.0f, 1.0f, 1.0f };
 
 struct VS_INPUT
 {
@@ -26,8 +27,7 @@ struct PS_OUTPUT
 
 VS_OUTPUT VS_Main(VS_INPUT input)
 {
-    VS_OUTPUT output = (VS_OUTPUT) 0;
-
+    VS_OUTPUT output;
 
     matrix worldView = mul(world, view);
     matrix worldViewProj = mul(mul(world, view), proj);
@@ -35,9 +35,9 @@ VS_OUTPUT VS_Main(VS_INPUT input)
     float4 viewPos = mul(input.position, worldView);
     float4 projPos = mul(viewPos, proj);
 
-    output.position = projPos / projPos.w;
+    output.position = projPos;
 
-    output.normal = mul(float4(input.normal.xyz, 0), worldViewProj);
+    output.normal = mul(float4(input.normal.xyz, 0), worldView);
 
     // store depth in normal.w
     // depth in view coordinate
@@ -53,10 +53,11 @@ VS_OUTPUT VS_Main(VS_INPUT input)
 PS_OUTPUT PS_Main(VS_OUTPUT input)
 {
     PS_OUTPUT output = (PS_OUTPUT) 0;
-    output.normal = float4(input.normal.xyz, 1);
-    output.depth = float4(input.normal.w, 0, 0, 1);
-    output.diffuse = C;
-    output.specular = C;
+
+    output.normal = float4(input.normal.xyz, 0);
+    output.depth = float4(input.normal.w, 0, 0, 0);
+    output.diffuse = Blue;
+    output.specular = White;
 
     return output;
 }

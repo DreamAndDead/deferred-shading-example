@@ -2,7 +2,7 @@ matrix world;
 matrix view;
 matrix proj;
 
-float2 screenSize = (640, 480);
+float2 screenSize = {640, 480};
 
 // point light type
 float3 light_diffuse = { 1.f, 1.f, 1.f };
@@ -87,10 +87,10 @@ struct PS_OUTPUT
     float4 color : COLOR0;
 };
 
-float dist_factor(float3 pixel_view_pos)
+float dist_factor(float3 object_view_pos)
 {
 	float4 light_pos = mul(float4(light_position, 1), view);
-	float dist = distance(pixel_view_pos, light_pos.xyz / light_pos.w);
+	float dist = distance(object_view_pos, light_pos.xyz / light_pos.w);
 
 	float dist_att;
 	if (dist > light_range)
@@ -143,7 +143,7 @@ VS_OUTPUT VS_Main(VS_INPUT input)
     VS_OUTPUT output;
 
     output.position = input.position;
-    output.texCoord = input.position.xy * float2(0.5, -0.5) + float2(0.5, 0.5) + 0.5 / screenSize; 
+	output.texCoord = input.position.xy * float2(0.5, -0.5) + float2(0.5, 0.5);// + 0.5 / screenSize; 
 
     // field of view: in y direction
     output.cameraEye = float3(input.position.x * TanHalfFOV * ViewAspect, input.position.y * TanHalfFOV, 1);
@@ -160,7 +160,6 @@ PS_OUTPUT PS_Main(VS_OUTPUT input)
     float4 diffuse = tex2D(diffuseSampler, input.texCoord);
     float4 specular = tex2D(specularSampler, input.texCoord);
 
-
     float4 position = float4(input.cameraEye * depth.x, 1);
 
 	float3 total_color = diffuse.rgb;
@@ -172,9 +171,6 @@ PS_OUTPUT PS_Main(VS_OUTPUT input)
     return output;
 }
 
-
-
-// just calculation
 Technique Plain
 {
     Pass Light
@@ -187,7 +183,6 @@ Technique Plain
     }
 }
 
-// use stencil culling algorithm
 Technique StencilCulling
 {
     Pass FrontFace
