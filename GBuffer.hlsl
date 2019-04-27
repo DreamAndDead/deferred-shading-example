@@ -2,7 +2,7 @@ matrix world;
 matrix view;
 matrix proj;
 
-float4 C = { .0f, .0f, 1.0f, 1.0f };
+float4 C = { .0f, .0f, 0.5f, 1.0f };
 
 struct VS_INPUT
 {

@@ -11,6 +11,13 @@ const int Height = 480;
  
 ID3DXMesh* ball = NULL;
 
+IDirect3DVertexBuffer9* vb = 0;
+// define vertex list
+struct Vertex {
+	float x, y, z, w;
+};
+
+
 HRESULT hr;
 ID3DXEffect* g_buffer_effect = 0;
 ID3DXEffect* point_light_effect = 0;
@@ -129,34 +136,14 @@ bool Setup()
 
 	specularTex->GetSurfaceLevel(0, &specularSurface);
 
-	return true;
-}
-
-void setMRT()
-{
-	// save origin render target
-	Device->GetRenderTarget(0, &originRenderTarget);
-
-	Device->SetRenderTarget(0, normalSurface);
-	Device->SetRenderTarget(1, depthSurface);
-	Device->SetRenderTarget(2, diffuseSurface);
-	Device->SetRenderTarget(3, specularSurface);
-}
-
-void resumeRender()
-{
-	Device->SetRenderTarget(0, originRenderTarget);
-	Device->SetRenderTarget(1, NULL);
-	Device->SetRenderTarget(2, NULL);
-	Device->SetRenderTarget(3, NULL);
-}
-
-void drawScreenQuad()
-{
-	// define vertex list
-	struct Vertex {
-		float x, y, z, w;
-	};
+	Device->CreateVertexBuffer(
+		6 * sizeof(Vertex),
+		0,
+		D3DFVF_XYZW,
+		D3DPOOL_MANAGED,
+		&vb,
+		0
+	);
 
 	/*
     -1,1	       1,1
@@ -182,16 +169,6 @@ void drawScreenQuad()
 	};
 
 	// lock buffer and draw it
-	IDirect3DVertexBuffer9* vb = 0;
-	Device->CreateVertexBuffer(
-		6 * sizeof(Vertex),
-		0,
-		D3DFVF_XYZW,
-		D3DPOOL_MANAGED,
-		&vb,
-		0
-	);
-
 	Vertex* vertices;
 	vb->Lock(0, 0, (void**)&vertices, 0);
 
@@ -204,6 +181,30 @@ void drawScreenQuad()
 
 	vb->Unlock();
 
+	return true;
+}
+
+void setMRT()
+{
+	// save origin render target
+	Device->GetRenderTarget(0, &originRenderTarget);
+
+	Device->SetRenderTarget(0, normalSurface);
+	Device->SetRenderTarget(1, depthSurface);
+	Device->SetRenderTarget(2, diffuseSurface);
+	Device->SetRenderTarget(3, specularSurface);
+}
+
+void resumeRender()
+{
+	Device->SetRenderTarget(0, originRenderTarget);
+	Device->SetRenderTarget(1, NULL);
+	Device->SetRenderTarget(2, NULL);
+	Device->SetRenderTarget(3, NULL);
+}
+
+void drawScreenQuad()
+{
 	Device->SetStreamSource(0, vb, 0, sizeof(Vertex));
 	Device->SetFVF(D3DFVF_XYZW);
 	Device->DrawPrimitive(D3DPT_TRIANGLELIST, 0, 2);
@@ -220,8 +221,8 @@ bool Display(float timeDelta)
 {
 	if( Device )
 	{
-		static float angle  = D3DX_PI;
-		static float height = 5.0f;
+		static float angle  = 0;
+		static float height = 0.0f;
 	
 		if( ::GetAsyncKeyState(VK_LEFT) & 0x8000f )
 			angle -= 0.5f * timeDelta;
@@ -237,9 +238,9 @@ bool Display(float timeDelta)
 
 
 		D3DXMATRIX world;
-		D3DXMatrixTranslation(&world,  1.0f,  2.0f, 3.0f);
+		D3DXMatrixTranslation(&world,  2.0f,  0.0f, 0.0f);
 
-		D3DXVECTOR3 position( cosf(angle) * 7.0f, height, sinf(angle) * 7.0f );
+		D3DXVECTOR3 position( cosf(angle) * 4.0f, 0, sinf(angle) * 4.0f );
 		D3DXVECTOR3 target(0.0f, 0.0f, 0.0f);
 		D3DXVECTOR3 up(0.0f, 1.0f, 0.0f);
 		D3DXMATRIX view;
@@ -264,6 +265,8 @@ bool Display(float timeDelta)
 		g_buffer_effect->SetMatrix(projHandle, &proj);
 
 
+
+		// G buffer phase
 		setMRT();
 
 		Device->Clear(0, 0, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL, 0x00000000, 1.0f, 0);
@@ -289,7 +292,16 @@ bool Display(float timeDelta)
 		g_buffer_effect->End();
 
 
+		// deferred light phase
 		resumeRender();
+
+		worldHandle = point_light_effect->GetParameterByName(0, "world");
+		viewHandle = point_light_effect->GetParameterByName(0, "view");
+		projHandle = point_light_effect->GetParameterByName(0, "proj");
+
+		point_light_effect->SetMatrix(worldHandle, &world);
+		point_light_effect->SetMatrix(viewHandle, &view);
+		point_light_effect->SetMatrix(projHandle, &proj);
 
 		D3DXHANDLE normalHandle = point_light_effect->GetParameterByName(0, "normalTex");
 		D3DXHANDLE depthHandle = point_light_effect->GetParameterByName(0, "depthTex");
