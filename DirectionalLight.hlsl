@@ -163,11 +163,4 @@ Technique Plain
     }
 }
 
-Technique StencilCulling
-{
-    Pass FrontFace
-    {
-        VertexShader = compile vs_3_0 VS_Main();
-        PixelShader = compile ps_3_0 PS_Main();
-    }
-}
+// no Technique StencilCulling for directional light
