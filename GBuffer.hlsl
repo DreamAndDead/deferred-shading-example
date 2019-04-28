@@ -37,7 +37,8 @@ VS_OUTPUT VS_Main(VS_INPUT input)
 
     output.position = projPos;
 
-    output.normal = mul(float4(input.normal.xyz, 0), worldView);
+    float4 n = mul(float4(input.normal.xyz, 0), worldView);
+    output.normal = normalize(n);
 
     // store depth in normal.w
     // depth in view coordinate

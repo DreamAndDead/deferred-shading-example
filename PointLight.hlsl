@@ -9,7 +9,7 @@ float3 light_diffuse = { 1.f, 1.f, 1.f };
 float3 light_specular = { 1.f, 1.f, 1.f };
 float3 light_ambient = { 1.f, 1.f, 1.f };
 
-float3 light_position = { 0.f, 4.f, 0.f };
+float3 light_position = { 0.f, 5.f, 0.f };
 float3 light_direction = { 1.f, 0.f, 0.f };
 
 float light_range = 20.f;

@@ -343,8 +343,7 @@ bool Display(float timeDelta)
 
 void Cleanup()
 {
-	for(int i = 0; i < 4; i++)
-		d3d::Release<ID3DXMesh*>(ball);
+	d3d::Release<ID3DXMesh*>(ball);
 }
 
 
