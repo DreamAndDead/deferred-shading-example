@@ -4,11 +4,11 @@
 // Globals
 //
 
-IDirect3DDevice9* Device = 0; 
+IDirect3DDevice9* Device = 0;
 
-const int Width  = 640;
+const int Width = 640;
 const int Height = 480;
- 
+
 ID3DXMesh* ball = NULL;
 
 IDirect3DVertexBuffer9* vb = 0;
@@ -39,6 +39,9 @@ IDirect3DSurface9* diffuseSurface = 0;
 IDirect3DTexture9* specularTex = 0;
 IDirect3DSurface9* specularSurface = 0;
 
+D3DXMATRIX world;
+D3DXMATRIX view;
+D3DXMATRIX proj;
 
 bool Setup()
 {
@@ -169,15 +172,15 @@ bool Setup()
 	);
 
 	/*
-    -1,1	       1,1
+	-1,1	       1,1
 	v0             v1
-               
-               
-               
+
+
+
 	v2             v3
 	-1,-1          1,-1
 	*/
-	
+
 	Vertex v0 = {
 		-1, 1, 0
 	};
@@ -236,125 +239,170 @@ void drawScreenQuad()
 void drawBall()
 {
 	Device->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL);
+	Device->SetMaterial(&(d3d::BLUE_MTRL));
 	ball->DrawSubset(0);
+}
+
+void fixedPipeline()
+{
+	//
+	// Setup a point light.  Note that the point light
+	// is positioned at the origin.
+	//
+
+	D3DXVECTOR3 pos(7.0f, 0.0f, 0.0f);
+	D3DXCOLOR   c = d3d::WHITE;
+	D3DLIGHT9 point = d3d::InitPointLight(&pos, &c);
+
+	//
+	// Set and Enable the light.
+	//
+
+	Device->SetLight(0, &point);
+	Device->LightEnable(0, true);
+
+	//
+	// Set lighting related render states.
+	//
+
+	Device->SetRenderState(D3DRS_NORMALIZENORMALS, true);
+	Device->SetRenderState(D3DRS_SPECULARENABLE, true);
+
+	Device->SetTransform(D3DTS_WORLD, &world);
+	Device->SetTransform(D3DTS_VIEW, &view);
+	Device->SetTransform(D3DTS_PROJECTION, &proj);
+
+	//
+	// Draw the scene:
+	//
+	Device->Clear(0, 0, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL, 0x00000000, 1.0f, 0);
+	Device->BeginScene();
+
+	drawBall();
+
+	Device->EndScene();
+	Device->Present(0, 0, 0, 0);
+}
+
+void deferredPipeline()
+{
+	D3DXHANDLE worldHandle = g_buffer_effect->GetParameterByName(0, "world");
+	D3DXHANDLE viewHandle = g_buffer_effect->GetParameterByName(0, "view");
+	D3DXHANDLE projHandle = g_buffer_effect->GetParameterByName(0, "proj");
+
+	g_buffer_effect->SetMatrix(worldHandle, &world);
+	g_buffer_effect->SetMatrix(viewHandle, &view);
+	g_buffer_effect->SetMatrix(projHandle, &proj);
+
+	// G buffer phase
+	setMRT();
+
+	Device->Clear(0, 0, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL, 0x00000000, 1.0f, 0);
+	Device->BeginScene();
+
+	D3DXHANDLE hTech = 0;
+	UINT numPasses = 0;
+
+	hTech = g_buffer_effect->GetTechniqueByName("main");
+	g_buffer_effect->SetTechnique(hTech);
+
+	g_buffer_effect->Begin(&numPasses, 0);
+
+	for (int i = 0; i < numPasses; i++)
+	{
+		g_buffer_effect->BeginPass(i);
+
+		drawBall();
+
+		g_buffer_effect->EndPass();
+	}
+
+	g_buffer_effect->End();
+
+
+	// deferred light phase
+	resumeRender();
+
+	viewHandle = directional_light_effect->GetParameterByName(0, "view");
+
+	directional_light_effect->SetMatrix(viewHandle, &view);
+
+
+	D3DXHANDLE normalHandle = directional_light_effect->GetParameterByName(0, "normalTex");
+	D3DXHANDLE depthHandle = directional_light_effect->GetParameterByName(0, "depthTex");
+	D3DXHANDLE diffuseHandle = directional_light_effect->GetParameterByName(0, "diffuseTex");
+	D3DXHANDLE specularHandle = directional_light_effect->GetParameterByName(0, "specularTex");
+
+	directional_light_effect->SetTexture(normalHandle, normalTex);
+	directional_light_effect->SetTexture(depthHandle, depthTex);
+	directional_light_effect->SetTexture(diffuseHandle, diffuseTex);
+	directional_light_effect->SetTexture(specularHandle, specularTex);
+
+	hTech = directional_light_effect->GetTechniqueByName("Plain");
+	directional_light_effect->SetTechnique(hTech);
+
+	numPasses = 0;
+	directional_light_effect->Begin(&numPasses, 0);
+
+	for (int i = 0; i < numPasses; i++)
+	{
+		directional_light_effect->BeginPass(i);
+
+		drawScreenQuad();
+
+		directional_light_effect->EndPass();
+	}
+
+	directional_light_effect->End();
+
+
+	Device->EndScene();
+	Device->Present(0, 0, 0, 0);
+
 }
 
 bool Display(float timeDelta)
 {
-	if( Device )
+	if (Device)
 	{
-		static float angle  = 0;
+		static float angle = 0;
 		static float height = 0.0f;
-	
-		if( ::GetAsyncKeyState(VK_LEFT) & 0x8000f )
+
+		if (::GetAsyncKeyState(VK_LEFT) & 0x8000f)
 			angle -= 0.5f * timeDelta;
 
-		if( ::GetAsyncKeyState(VK_RIGHT) & 0x8000f )
+		if (::GetAsyncKeyState(VK_RIGHT) & 0x8000f)
 			angle += 0.5f * timeDelta;
 
-		if( ::GetAsyncKeyState(VK_UP) & 0x8000f )
+		if (::GetAsyncKeyState(VK_UP) & 0x8000f)
 			height += 5.0f * timeDelta;
 
-		if( ::GetAsyncKeyState(VK_DOWN) & 0x8000f )
+		if (::GetAsyncKeyState(VK_DOWN) & 0x8000f)
 			height -= 5.0f * timeDelta;
 
 
-		D3DXMATRIX world;
 		D3DXMatrixTranslation(&world, cosf(angle) * 2.0f, 0, sinf(angle) * 2.0f);
 
-		D3DXVECTOR3 position( 4.0f, 0, 0.0f );
+		D3DXVECTOR3 position(4.0f, height, 0.0f);
 		D3DXVECTOR3 target(0.0f, 0.0f, 0.0f);
 		D3DXVECTOR3 up(0.0f, 1.0f, 0.0f);
-		D3DXMATRIX view;
 		D3DXMatrixLookAtLH(&view, &position, &target, &up);
 
 		// https://docs.microsoft.com/en-us/windows/desktop/direct3d9/d3dxmatrixperspectivefovlh
-		D3DXMATRIX proj;
 		D3DXMatrixPerspectiveFovLH(
-				&proj,
-				D3DX_PI * 0.5f, // 90 degree, tan(fov/2) = 1
-				(float)Width / (float)Height,
-				1.0f,
-				1000.0f);
-
-
-		D3DXHANDLE worldHandle = g_buffer_effect->GetParameterByName(0, "world");
-		D3DXHANDLE viewHandle = g_buffer_effect->GetParameterByName(0, "view");
-		D3DXHANDLE projHandle = g_buffer_effect->GetParameterByName(0, "proj");
-
-		g_buffer_effect->SetMatrix(worldHandle, &world);
-		g_buffer_effect->SetMatrix(viewHandle, &view);
-		g_buffer_effect->SetMatrix(projHandle, &proj);
-
-
-
-		// G buffer phase
-		setMRT();
-
-		Device->Clear(0, 0, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL, 0x00000000, 1.0f, 0);
-		Device->BeginScene();
-
-		D3DXHANDLE hTech = 0;
-		UINT numPasses = 0;
-
-		hTech = g_buffer_effect->GetTechniqueByName("main");
-		g_buffer_effect->SetTechnique(hTech);
-
-		g_buffer_effect->Begin(&numPasses, 0);
-
-		for (int i = 0; i < numPasses; i++)
-		{
-			g_buffer_effect->BeginPass(i);
-
-			drawBall();
-
-			g_buffer_effect->EndPass();
-		}
-
-		g_buffer_effect->End();
-
-
-		// deferred light phase
-		resumeRender();
-
-		viewHandle = directional_light_effect->GetParameterByName(0, "view");
-
-		directional_light_effect->SetMatrix(viewHandle, &view);
-
-
-		D3DXHANDLE normalHandle = directional_light_effect->GetParameterByName(0, "normalTex");
-		D3DXHANDLE depthHandle = directional_light_effect->GetParameterByName(0, "depthTex");
-		D3DXHANDLE diffuseHandle = directional_light_effect->GetParameterByName(0, "diffuseTex");
-		D3DXHANDLE specularHandle = directional_light_effect->GetParameterByName(0, "specularTex");
-
-		directional_light_effect->SetTexture(normalHandle, normalTex);
-		directional_light_effect->SetTexture(depthHandle, depthTex);
-		directional_light_effect->SetTexture(diffuseHandle, diffuseTex);
-		directional_light_effect->SetTexture(specularHandle, specularTex);
-
-		hTech = directional_light_effect->GetTechniqueByName("Plain");
-		directional_light_effect->SetTechnique(hTech);
-
-		numPasses = 0;
-		directional_light_effect->Begin(&numPasses, 0);
-
-		for (int i = 0; i < numPasses; i++)
-		{
-			directional_light_effect->BeginPass(i);
-
-			drawScreenQuad();
-
-			directional_light_effect->EndPass();
-		}
-
-		directional_light_effect->End();
+			&proj,
+			D3DX_PI * 0.5f, // 90 degree, tan(fov/2) = 1
+			(float)Width / (float)Height,
+			1.0f,
+			1000.0f);
 
 
 
 
+		//fixedPipeline();
 
-		Device->EndScene();
-		Device->Present(0, 0, 0, 0);
+		deferredPipeline();
+
 	}
 	return true;
 }
@@ -370,14 +418,14 @@ void Cleanup()
 //
 LRESULT CALLBACK d3d::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	switch( msg )
+	switch (msg)
 	{
 	case WM_DESTROY:
 		::PostQuitMessage(0);
 		break;
-		
+
 	case WM_KEYDOWN:
-		if( wParam == VK_ESCAPE )
+		if (wParam == VK_ESCAPE)
 			::DestroyWindow(hwnd);
 		break;
 	}
@@ -388,24 +436,24 @@ LRESULT CALLBACK d3d::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 // WinMain
 //
 int WINAPI WinMain(HINSTANCE hinstance,
-				   HINSTANCE prevInstance, 
-				   PSTR cmdLine,
-				   int showCmd)
+	HINSTANCE prevInstance,
+	PSTR cmdLine,
+	int showCmd)
 {
-	if(!d3d::InitD3D(hinstance,
+	if (!d3d::InitD3D(hinstance,
 		Width, Height, true, D3DDEVTYPE_HAL, &Device))
 	{
 		::MessageBox(0, "InitD3D() - FAILED", 0, 0);
 		return 0;
 	}
-		
-	if(!Setup())
+
+	if (!Setup())
 	{
 		::MessageBox(0, "Setup() - FAILED", 0, 0);
 		return 0;
 	}
 
-	d3d::EnterMsgLoop( Display );
+	d3d::EnterMsgLoop(Display);
 
 	Cleanup();
 

@@ -34,21 +34,19 @@ VS_OUTPUT VS_Main(VS_INPUT input)
     matrix worldViewProj = mul(worldView, proj);
 
     float4 viewPos = mul(input.position, worldView);
-    float4 projPos = mul(viewPos, proj);
+    float4 projPos = mul(input.position, worldViewProj);
 
-    output.position = projPos;
+    output.position = projPos / projPos.w;
 
     float4 n = mul(float4(input.normal.xyz, 0), worldView);
     n = normalize(n);
-
     // ATTENTION: normal range [-1, 1] => color range [0, 1]
     n = float4(n.xyz / 2 + 0.5f, 0);
-
     output.normal = n;
 
     // depth in view coordinate
     // store in x
-    output.depth = (viewPos.z / viewPos.w, 0);
+    output.depth = (viewPos.z * 100 / viewPos.w, 0);
 
     // from texture
     // output.diffuse
@@ -62,7 +60,7 @@ PS_OUTPUT PS_Main(VS_OUTPUT input)
     PS_OUTPUT output = (PS_OUTPUT) 0;
 
     output.normal = float4(input.normal.xyz, 0);
-    output.depth = float4(input.depth.x / 100, 0, 0, 0);
+    output.depth = float4(input.depth.x, 0, 0, 0);
     output.diffuse = Blue;
     output.specular = White;
 
