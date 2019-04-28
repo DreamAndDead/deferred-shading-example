@@ -1,16 +1,14 @@
-matrix world;
 matrix view;
-matrix proj;
 
 float2 screenSize = {640.f, 480.f};
 
-// point light type
+// directional light
 float3 light_diffuse = { 1.f, 1.f, 1.f };
 float3 light_specular = { 1.f, 1.f, 1.f };
 float3 light_ambient = { 1.f, 1.f, 1.f };
 
 float3 light_position = { 8.f, 0.f, 0.f };
-float3 light_direction = { 1.f, 0.f, 0.f };
+float3 light_direction = { -1.f, -1.f, 0.f };
 
 float light_range = 20.f;
 float light_falloff = 1.f;
@@ -77,7 +75,7 @@ struct VS_INPUT
 
 struct VS_OUTPUT
 {
-    float4 position : POSITION;
+    float4 position : POSITION0;
     float2 texCoord : TEXCOORD0;
     float3 cameraEye : TEXCOORD1;
 };
@@ -87,24 +85,6 @@ struct PS_OUTPUT
     float4 color : COLOR0;
 };
 
-float dist_factor(float3 object_view_pos)
-{
-	float4 light_pos = mul(float4(light_position, 1), view);
-	float dist = distance(object_view_pos, light_pos.xyz / light_pos.w);
-
-	float dist_att;
-	if (dist > light_range)
-	{
-		dist_att = 0;
-	}
-	else
-	{
-		dist_att = 1 / (light_attenuation0 + light_attenuation1 * dist + light_attenuation2 * dist * dist);
-	}
-
-	return dist_att;
-}
-
 /*
  * diffuse: object material diffuse color
  * normal: object normal vector in camera space
@@ -113,29 +93,30 @@ float dist_factor(float3 object_view_pos)
  */
 float3 lighting(float3 diffuse, float3 normal, float3 position, float3 specular)
 {
-	float3 I_diff, I_spec, I_total;
-	float3 l, v, n, h;
-	float att;
+    float3 I_diff, I_spec, I_total;
+    float3 l, v, n, h;
+    float att;
 
-	n = normalize(normal);
-	v = normalize(-position);
+    n = normalize(normal);
+    v = normalize(-position);
 
-	// FIXME: test value
-	float m_shi = 1;
+    // FIXME: test value
+    float m_shi = 1;
 
-	att = dist_factor(position);
+    att = 1;
 
-	float4 light_pos = mul(float4(light_position, 1), view);
-	l = normalize(light_pos.xyz / light_pos.w - position);
+    // tranform light direction from wolrd space to camera space
+    float4 light_dir = mul(float4(light_direction, 0), view);
+    l = normalize(-light_dir.xyz);
 
-	I_diff = saturate(dot(l, n)) * (diffuse.xyz * light_diffuse.xyz);
+    I_diff = saturate(dot(l, n)) * (diffuse.xyz * light_diffuse.xyz);
 
-	h = normalize(l + v);
+    h = normalize(l + v);
 
-	I_spec = saturate(dot(l, n)) * pow(saturate(dot(h, n)), m_shi) * (specular.xyz * light_specular.xyz);
+    I_spec = saturate(dot(l, n)) * pow(saturate(dot(h, n)), m_shi) * (specular.xyz * light_specular.xyz);
 
-	I_total = att * (I_diff + I_spec);
-	return I_total;
+    I_total = att * (I_diff + I_spec);
+    return I_total;
 }
 
 VS_OUTPUT VS_Main(VS_INPUT input)
@@ -143,7 +124,7 @@ VS_OUTPUT VS_Main(VS_INPUT input)
     VS_OUTPUT output;
 
     output.position = input.position;
-    output.texCoord = input.position.xy * float2(0.5, -0.5) + float2(0.5, 0.5);// +0.5 / screenSize;
+    output.texCoord = input.position.xy * float2(0.5, -0.5) + float2(0.5, 0.5) + 0.5 / screenSize;
 
     // field of view: in y direction
     output.cameraEye = float3(input.position.x * TanHalfFOV * ViewAspect, input.position.y * TanHalfFOV, 1);
@@ -156,6 +137,8 @@ PS_OUTPUT PS_Main(VS_OUTPUT input)
     PS_OUTPUT output;
 
     float4 normal = tex2D(normalSampler, input.texCoord);
+    normal = float4((normal.xyz - 0.5f) * 2, normal.w);
+
     float4 depth = tex2D(depthSampler, input.texCoord);
     float4 diffuse = tex2D(diffuseSampler, input.texCoord);
     float4 specular = tex2D(specularSampler, input.texCoord);
@@ -177,9 +160,6 @@ Technique Plain
     {
         VertexShader = compile vs_3_0 VS_Main();
         PixelShader = compile ps_3_0 PS_Main();
-
-		ColorWriteEnable = 0xFFFFFFFF;
-		ZWriteEnable = 0;
     }
 }
 

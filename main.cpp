@@ -18,9 +18,11 @@ struct Vertex {
 };
 
 
-HRESULT hr;
 ID3DXEffect* g_buffer_effect = 0;
+ID3DXEffect* directional_light_effect = 0;
 ID3DXEffect* point_light_effect = 0;
+
+HRESULT hr;
 ID3DXBuffer* errorBuffer = 0;
 
 IDirect3DSurface9* originRenderTarget = 0;
@@ -60,6 +62,27 @@ bool Setup()
 
 	if (FAILED(hr)) {
 		::MessageBox(0, "D3DXCreateEffectFromFile( GBuffer.hlsl ) - Failed", 0, 0);
+		return false;
+	}
+
+	hr = D3DXCreateEffectFromFile(
+		Device,
+		"DirectionalLight.hlsl",
+		0,
+		0,
+		D3DXSHADER_DEBUG,
+		0,
+		&directional_light_effect,
+		&errorBuffer
+	);
+
+	if (errorBuffer) {
+		::MessageBox(0, (char*)errorBuffer->GetBufferPointer(), 0, 0);
+		d3d::Release<ID3DXBuffer*>(errorBuffer);
+	}
+
+	if (FAILED(hr)) {
+		::MessageBox(0, "D3DXCreateEffectFromFile( DirectionalLight.hlsl ) - Failed", 0, 0);
 		return false;
 	}
 
@@ -237,9 +260,9 @@ bool Display(float timeDelta)
 
 
 		D3DXMATRIX world;
-		D3DXMatrixTranslation(&world,  2.0f,  0.0f, 0.0f);
+		D3DXMatrixTranslation(&world, cosf(angle) * 2.0f, 0, sinf(angle) * 2.0f);
 
-		D3DXVECTOR3 position( cosf(angle) * 4.0f, 0, sinf(angle) * 4.0f );
+		D3DXVECTOR3 position( 4.0f, 0, 0.0f );
 		D3DXVECTOR3 target(0.0f, 0.0f, 0.0f);
 		D3DXVECTOR3 up(0.0f, 1.0f, 0.0f);
 		D3DXMATRIX view;
@@ -249,7 +272,7 @@ bool Display(float timeDelta)
 		D3DXMATRIX proj;
 		D3DXMatrixPerspectiveFovLH(
 				&proj,
-				D3DX_PI * 0.5f, // 90 degree
+				D3DX_PI * 0.5f, // 90 degree, tan(fov/2) = 1
 				(float)Width / (float)Height,
 				1.0f,
 				1000.0f);
@@ -294,42 +317,37 @@ bool Display(float timeDelta)
 		// deferred light phase
 		resumeRender();
 
-		worldHandle = point_light_effect->GetParameterByName(0, "world");
-		viewHandle = point_light_effect->GetParameterByName(0, "view");
-		projHandle = point_light_effect->GetParameterByName(0, "proj");
+		viewHandle = directional_light_effect->GetParameterByName(0, "view");
 
-		point_light_effect->SetMatrix(worldHandle, &world);
-		point_light_effect->SetMatrix(viewHandle, &view);
-		point_light_effect->SetMatrix(projHandle, &proj);
+		directional_light_effect->SetMatrix(viewHandle, &view);
 
-		D3DXHANDLE normalHandle = point_light_effect->GetParameterByName(0, "normalTex");
-		D3DXHANDLE depthHandle = point_light_effect->GetParameterByName(0, "depthTex");
-		D3DXHANDLE diffuseHandle = point_light_effect->GetParameterByName(0, "diffuseTex");
-		D3DXHANDLE specularHandle = point_light_effect->GetParameterByName(0, "specularTex");
 
-		point_light_effect->SetTexture(normalHandle, normalTex);
-		point_light_effect->SetTexture(depthHandle, depthTex);
-		point_light_effect->SetTexture(diffuseHandle, diffuseTex);
-		point_light_effect->SetTexture(specularHandle, specularTex);
+		D3DXHANDLE normalHandle = directional_light_effect->GetParameterByName(0, "normalTex");
+		D3DXHANDLE depthHandle = directional_light_effect->GetParameterByName(0, "depthTex");
+		D3DXHANDLE diffuseHandle = directional_light_effect->GetParameterByName(0, "diffuseTex");
+		D3DXHANDLE specularHandle = directional_light_effect->GetParameterByName(0, "specularTex");
 
-		// TODO: pass a light inside
+		directional_light_effect->SetTexture(normalHandle, normalTex);
+		directional_light_effect->SetTexture(depthHandle, depthTex);
+		directional_light_effect->SetTexture(diffuseHandle, diffuseTex);
+		directional_light_effect->SetTexture(specularHandle, specularTex);
 
-		hTech = point_light_effect->GetTechniqueByName("Plain");
-		point_light_effect->SetTechnique(hTech);
+		hTech = directional_light_effect->GetTechniqueByName("Plain");
+		directional_light_effect->SetTechnique(hTech);
 
 		numPasses = 0;
-		point_light_effect->Begin(&numPasses, 0);
+		directional_light_effect->Begin(&numPasses, 0);
 
 		for (int i = 0; i < numPasses; i++)
 		{
-			point_light_effect->BeginPass(i);
+			directional_light_effect->BeginPass(i);
 
 			drawScreenQuad();
 
-			point_light_effect->EndPass();
+			directional_light_effect->EndPass();
 		}
 
-		point_light_effect->End();
+		directional_light_effect->End();
 
 
 

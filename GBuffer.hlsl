@@ -13,8 +13,9 @@ struct VS_INPUT
 
 struct VS_OUTPUT
 {
-    float4 position : POSITION;
-    float4 normal : NORMAL;
+    float4 position : POSITION0;
+    float4 normal : NORMAL0;
+    float2 depth : TEXCOORD0;
 };
 
 struct PS_OUTPUT
@@ -30,7 +31,7 @@ VS_OUTPUT VS_Main(VS_INPUT input)
     VS_OUTPUT output;
 
     matrix worldView = mul(world, view);
-    matrix worldViewProj = mul(mul(world, view), proj);
+    matrix worldViewProj = mul(worldView, proj);
 
     float4 viewPos = mul(input.position, worldView);
     float4 projPos = mul(viewPos, proj);
@@ -38,13 +39,18 @@ VS_OUTPUT VS_Main(VS_INPUT input)
     output.position = projPos;
 
     float4 n = mul(float4(input.normal.xyz, 0), worldView);
-    output.normal = normalize(n);
+    n = normalize(n);
 
-    // store depth in normal.w
+    // ATTENTION: normal range [-1, 1] => color range [0, 1]
+    n = float4(n.xyz / 2 + 0.5f, 0);
+
+    output.normal = n;
+
     // depth in view coordinate
-    output.normal.w = viewPos.z / viewPos.w;
+    // store in x
+    output.depth = (viewPos.z / viewPos.w, 0);
 
-    // maybe from texture
+    // from texture
     // output.diffuse
     // output.specular
 
@@ -56,7 +62,7 @@ PS_OUTPUT PS_Main(VS_OUTPUT input)
     PS_OUTPUT output = (PS_OUTPUT) 0;
 
     output.normal = float4(input.normal.xyz, 0);
-    output.depth = float4(input.normal.w, 0, 0, 0);
+    output.depth = float4(input.depth.x / 100, 0, 0, 0);
     output.diffuse = Blue;
     output.specular = White;
 
