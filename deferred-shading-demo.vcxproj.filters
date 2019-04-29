@@ -34,10 +34,8 @@
     <None Include="GBuffer.hlsl">
       <Filter>Source Files</Filter>
     </None>
-  </ItemGroup>
-  <ItemGroup>
-    <FxCompile Include="DirectionalLight.hlsl">
+    <None Include="DirectionalLight.hlsl">
       <Filter>Source Files</Filter>
-    </FxCompile>
+    </None>
   </ItemGroup>
 </Project>

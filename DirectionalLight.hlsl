@@ -1,28 +1,16 @@
+// directional light
+
 matrix view;
 
-float2 screenSize = {640.f, 480.f};
+float2 screenSize;
+float viewAspect;
+float tanHalfFov;
 
-// directional light
+float3 light_ambient = { 1.f, 1.f, 1.f };
 float3 light_diffuse = { 1.f, 1.f, 1.f };
 float3 light_specular = { 1.f, 1.f, 1.f };
-float3 light_ambient = { 1.f, 1.f, 1.f };
 
-float3 light_position = { 8.f, 0.f, 0.f };
 float3 light_direction = { 0.f, 0.f, -1.f };
-
-float light_range = 20.f;
-float light_falloff = 1.f;
-
-float light_attenuation0 = 0.1f;
-float light_attenuation1 = 0.1f;
-float light_attenuation2 = 0.1f;
-
-float light_theta = 1.f;
-float light_phi;
-
-
-float ViewAspect = 640.f / 480.f;
-float TanHalfFOV = 1.f;
 
 texture normalTex;
 sampler normalSampler = sampler_state
@@ -91,7 +79,7 @@ struct PS_OUTPUT
  * position: object position in camera space
  * specular: object material specular
  */
-float3 lighting(float3 diffuse, float3 normal, float3 position, float3 specular)
+float3 lighting(float3 diffuse, float3 normal, float3 position, float3 specular, float shininess)
 {
     float3 I_diff, I_spec, I_total;
     float3 l, v, n, h;
@@ -99,10 +87,6 @@ float3 lighting(float3 diffuse, float3 normal, float3 position, float3 specular)
 
     n = normalize(normal);
     v = normalize(-position);
-
-    // FIXME: test value
-    // pass from g buffer
-    float m_shi = 0.5f;
 
     att = 1;
 
@@ -114,7 +98,7 @@ float3 lighting(float3 diffuse, float3 normal, float3 position, float3 specular)
 
     h = normalize(l + v);
 
-    I_spec = saturate(dot(l, n)) * pow(saturate(dot(h, n)), m_shi) * (specular.xyz * light_specular.xyz);
+    I_spec = saturate(dot(l, n)) * pow(saturate(dot(h, n)), shininess) * (specular.xyz * light_specular.xyz);
 
     I_total = att * (I_diff + I_spec);
     return I_total;
@@ -128,7 +112,7 @@ VS_OUTPUT VS_Main(VS_INPUT input)
     output.texCoord = input.position.xy * float2(0.5, -0.5) + float2(0.5, 0.5) + 0.5 / screenSize;
 
     // field of view: in y direction
-    output.cameraEye = float3(input.position.x * TanHalfFOV * ViewAspect, input.position.y * TanHalfFOV, 1);
+    output.cameraEye = float3(input.position.x * tanHalfFov * viewAspect, input.position.y * tanHalfFov, 1);
 
     return output;
 };
@@ -138,20 +122,20 @@ PS_OUTPUT PS_Main(VS_OUTPUT input)
     PS_OUTPUT output;
 
     float4 normal = tex2D(normalSampler, input.texCoord);
-    normal = float4((normal.xyz - 0.5f) * 2, normal.w);
-
     float4 depth = tex2D(depthSampler, input.texCoord);
     float4 diffuse = tex2D(diffuseSampler, input.texCoord);
     float4 specular = tex2D(specularSampler, input.texCoord);
 
+    normal = float4((normal.xyz - 0.5f) * 2, normal.w);
     float4 position = float4(input.cameraEye * depth.x * 100, 1);
+    float shininess = specular.w;
 
 	float3 total_color = diffuse.rgb;
-	float alpha = diffuse.a;
 
-	total_color = total_color + lighting(diffuse.rgb, normal.xyz, position.xyz, specular.rgb);
+	total_color = total_color + lighting(diffuse.rgb, normal.xyz, position.xyz, specular.rgb, shininess);
 
-	output.color = float4(total_color, alpha);
+    // don't work with the alpha
+	output.color = float4(total_color, 1);
     return output;
 }
 

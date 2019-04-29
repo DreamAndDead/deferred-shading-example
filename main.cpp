@@ -1,16 +1,15 @@
 #include "d3dUtility.h"
 
-//
-// Globals
-//
-
 IDirect3DDevice9* Device = 0;
 
 const int Width = 640;
 const int Height = 480;
+const float ScreenSize[2] = {(float)Width, (float)Height};
+const float Fov = D3DX_PI * 0.5f; // 90 deg, tan(fov/2) = 1
+const float ViewAspect = (float)Width / (float)Height;
+const float TanHalfFov = tanf(Fov / 2);
 
 ID3DXMesh* ball = NULL;
-
 const int scale = 10;
 
 
@@ -286,6 +285,7 @@ void fixedPipeline()
 		for (int y = -scale; y <= scale; y++) {
 			D3DXMatrixTranslation(&world, x, y, 0);
 			Device->SetTransform(D3DTS_WORLD, &world);
+
 			drawBall();
 		}
 	}
@@ -339,8 +339,14 @@ void deferredPipeline()
 	resumeRender();
 
 	viewHandle = directional_light_effect->GetParameterByName(0, "view");
+	D3DXHANDLE screenSizeHandle = directional_light_effect->GetParameterByName(0, "screenSize");
+	D3DXHANDLE viewAspectHandle = directional_light_effect->GetParameterByName(0, "viewAspect");
+	D3DXHANDLE tanHalfFovHandle = directional_light_effect->GetParameterByName(0, "tanHalfFov");
 
 	directional_light_effect->SetMatrix(viewHandle, &view);
+	directional_light_effect->SetFloatArray(screenSizeHandle, ScreenSize, 2);
+	directional_light_effect->SetFloat(viewAspectHandle, ViewAspect);
+	directional_light_effect->SetFloat(tanHalfFovHandle, TanHalfFov);
 
 
 	D3DXHANDLE normalHandle = directional_light_effect->GetParameterByName(0, "normalTex");
@@ -381,7 +387,7 @@ bool Display(float timeDelta)
 	if (Device)
 	{
 		static float angle = 0;
-		static float radius = 10.0f;
+		static float radius = 2.0f;
 
 		if (::GetAsyncKeyState(VK_LEFT) & 0x8000f)
 			angle -= timeDelta;
@@ -400,14 +406,14 @@ bool Display(float timeDelta)
 
 		D3DXVECTOR3 position(cosf(angle) * radius, sinf(angle) * radius, radius);
 		D3DXVECTOR3 target(0.0f, 0.0f, 0.0f);
-		D3DXVECTOR3 up(0.0f, 1.0f, 0.0f);
+		D3DXVECTOR3 up(0.0f, 0.0f, 1.0f);
 		D3DXMatrixLookAtLH(&view, &position, &target, &up);
 
 		// https://docs.microsoft.com/en-us/windows/desktop/direct3d9/d3dxmatrixperspectivefovlh
 		D3DXMatrixPerspectiveFovLH(
 			&proj,
-			D3DX_PI * 0.5f, // 90 degree, tan(fov/2) = 1
-			(float)Width / (float)Height,
+			Fov,
+			ViewAspect,
 			1.0f,
 			1000.0f);
 
