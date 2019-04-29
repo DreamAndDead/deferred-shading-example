@@ -11,6 +11,9 @@ const int Height = 480;
 
 ID3DXMesh* ball = NULL;
 
+const int scale = 10;
+
+
 IDirect3DVertexBuffer9* vb = 0;
 // define vertex list
 struct Vertex {
@@ -45,7 +48,7 @@ D3DXMATRIX proj;
 
 bool Setup()
 {
-	D3DXCreateSphere(Device, 1.0f, 20, 20, &ball, 0);
+	D3DXCreateSphere(Device, 0.5f, 20, 20, &ball, 0);
 
 	hr = D3DXCreateEffectFromFile(
 		Device,
@@ -174,11 +177,11 @@ bool Setup()
 	/*
 	-1,1	       1,1
 	v0             v1
-     +-------------+
-     |             |
-     |    screen   |
-     |             |
-     +-------------+
+	 +-------------+
+	 |             |
+	 |    screen   |
+	 |             |
+	 +-------------+
 	v2             v3
 	-1,-1          1,-1
 	*/
@@ -270,7 +273,6 @@ void fixedPipeline()
 	Device->SetRenderState(D3DRS_NORMALIZENORMALS, true);
 	Device->SetRenderState(D3DRS_SPECULARENABLE, true);
 
-	Device->SetTransform(D3DTS_WORLD, &world);
 	Device->SetTransform(D3DTS_VIEW, &view);
 	Device->SetTransform(D3DTS_PROJECTION, &proj);
 
@@ -280,7 +282,13 @@ void fixedPipeline()
 	Device->Clear(0, 0, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL, 0x00000000, 1.0f, 0);
 	Device->BeginScene();
 
-	drawBall();
+	for (int x = -scale; x <= scale; x++) {
+		for (int y = -scale; y <= scale; y++) {
+			D3DXMatrixTranslation(&world, x, y, 0);
+			Device->SetTransform(D3DTS_WORLD, &world);
+			drawBall();
+		}
+	}
 
 	Device->EndScene();
 	Device->Present(0, 0, 0, 0);
@@ -368,24 +376,24 @@ bool Display(float timeDelta)
 	if (Device)
 	{
 		static float angle = 0;
-		static float height = 0.0f;
+		static float radius = 5.0f;
 
 		if (::GetAsyncKeyState(VK_LEFT) & 0x8000f)
-			angle -= 0.5f * timeDelta;
+			angle -= timeDelta;
 
 		if (::GetAsyncKeyState(VK_RIGHT) & 0x8000f)
-			angle += 0.5f * timeDelta;
+			angle += timeDelta;
 
 		if (::GetAsyncKeyState(VK_UP) & 0x8000f)
-			height += 5.0f * timeDelta;
+			radius += 2.0f * timeDelta;
 
 		if (::GetAsyncKeyState(VK_DOWN) & 0x8000f)
-			height -= 5.0f * timeDelta;
+			radius -= 2.0f * timeDelta;
 
 
-		D3DXMatrixTranslation(&world, cosf(angle) * 2.0f, 0, sinf(angle) * 2.0f);
+		D3DXMatrixTranslation(&world, 0, 0, 0);
 
-		D3DXVECTOR3 position(4.0f, height, 0.0f);
+		D3DXVECTOR3 position(cosf(angle) * radius, sinf(angle) * radius, radius);
 		D3DXVECTOR3 target(0.0f, 0.0f, 0.0f);
 		D3DXVECTOR3 up(0.0f, 1.0f, 0.0f);
 		D3DXMatrixLookAtLH(&view, &position, &target, &up);
@@ -401,9 +409,8 @@ bool Display(float timeDelta)
 
 
 
-		//fixedPipeline();
-
-		deferredPipeline();
+		fixedPipeline();
+		//deferredPipeline();
 
 	}
 	return true;

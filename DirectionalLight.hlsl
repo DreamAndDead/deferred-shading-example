@@ -101,7 +101,8 @@ float3 lighting(float3 diffuse, float3 normal, float3 position, float3 specular)
     v = normalize(-position);
 
     // FIXME: test value
-    float m_shi = 1;
+    // pass from g buffer
+    float m_shi = 0.5f;
 
     att = 1;
 
