@@ -300,7 +300,6 @@ void deferredPipeline()
 	D3DXHANDLE viewHandle = g_buffer_effect->GetParameterByName(0, "view");
 	D3DXHANDLE projHandle = g_buffer_effect->GetParameterByName(0, "proj");
 
-	g_buffer_effect->SetMatrix(worldHandle, &world);
 	g_buffer_effect->SetMatrix(viewHandle, &view);
 	g_buffer_effect->SetMatrix(projHandle, &proj);
 
@@ -316,18 +315,24 @@ void deferredPipeline()
 	hTech = g_buffer_effect->GetTechniqueByName("main");
 	g_buffer_effect->SetTechnique(hTech);
 
-	g_buffer_effect->Begin(&numPasses, 0);
+	for (int x = -scale; x <= scale; x++) {
+		for (int y = -scale; y <= scale; y++) {
+			D3DXMatrixTranslation(&world, x, y, 0);
+			g_buffer_effect->SetMatrix(worldHandle, &world);
 
-	for (int i = 0; i < numPasses; i++)
-	{
-		g_buffer_effect->BeginPass(i);
+			g_buffer_effect->Begin(&numPasses, 0);
 
-		drawBall();
+			for (int i = 0; i < numPasses; i++)
+			{
+				g_buffer_effect->BeginPass(i);
 
-		g_buffer_effect->EndPass();
+				drawBall();
+
+				g_buffer_effect->EndPass();
+			}
+			g_buffer_effect->End();
+		}
 	}
-
-	g_buffer_effect->End();
 
 
 	// deferred light phase
@@ -376,7 +381,7 @@ bool Display(float timeDelta)
 	if (Device)
 	{
 		static float angle = 0;
-		static float radius = 5.0f;
+		static float radius = 10.0f;
 
 		if (::GetAsyncKeyState(VK_LEFT) & 0x8000f)
 			angle -= timeDelta;
@@ -406,12 +411,8 @@ bool Display(float timeDelta)
 			1.0f,
 			1000.0f);
 
-
-
-
-		fixedPipeline();
-		//deferredPipeline();
-
+		//fixedPipeline();
+		deferredPipeline();
 	}
 	return true;
 }

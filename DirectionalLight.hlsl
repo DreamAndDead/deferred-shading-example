@@ -8,7 +8,7 @@ float3 light_specular = { 1.f, 1.f, 1.f };
 float3 light_ambient = { 1.f, 1.f, 1.f };
 
 float3 light_position = { 8.f, 0.f, 0.f };
-float3 light_direction = { -1.f, -1.f, 0.f };
+float3 light_direction = { 0.f, 0.f, -1.f };
 
 float light_range = 20.f;
 float light_falloff = 1.f;
