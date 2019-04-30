@@ -1,4 +1,4 @@
-// point light
+// spot light
 matrix view;
 
 float2 screenSize;
@@ -10,12 +10,17 @@ float3 light_diffuse = { 1.f, 1.f, 1.f };
 float3 light_specular = { 1.f, 1.f, 1.f };
 
 float3 light_position = { 0.f, 0.f, 5.f };
+float3 light_direction = { 0.f, 0.f, -1.f };
 
 float light_range = 8.0f;
+float light_falloff = 2.f;
 
 float light_attenuation0 = 0.0f;
 float light_attenuation1 = 0.0f;
-float light_attenuation2 = 0.11;
+float light_attenuation2 = 0.1f;
+
+float light_theta = 1.f;
+float light_phi = 2.0f;
 
 texture normalTex;
 sampler normalSampler = sampler_state
@@ -96,6 +101,38 @@ float dist_factor(float3 point_view_pos)
 	return dist_att;
 }
 
+float spot_factor(float3 point_to_light_dir)
+{
+    float4 light_dir = mul(float4(light_direction, 0), view);
+    float3 norm_light_dir = normalize(light_dir.xyz);
+
+    float cos_half_theta = cos(light_theta / 2);
+    float cos_half_phi = cos(light_phi / 2);
+
+    // alpha is the angle between light direction vector and light-to-object vector
+    float cos_alpha = dot(norm_light_dir, -point_to_light_dir);
+
+    float factor;
+
+    if (cos_alpha > cos_half_theta)
+    {
+        factor = 1;
+    }
+    else if (cos_alpha < cos_half_phi)
+    {
+        factor = 0;
+    }
+    else
+    {
+        float p = (cos_alpha - cos_half_phi) / (cos_half_theta - cos_half_phi);
+        // p is always between 0 and 1, but hlsl compiler doesn't know
+        // use abs() here to avoid the hlsl compiler's warning
+        factor = pow(abs(p), light_falloff);
+    }
+
+    return factor;
+}
+
 /*
  * diffuse: material diffuse color
  * normal: point normal vector in camera space
@@ -109,9 +146,6 @@ float3 lighting(float3 diffuse, float3 normal, float3 position, float3 specular,
 	float3 l, v, n, h;
 	float att, spot;
 
-	att = dist_factor(position);
-    spot = 1;
-
 	n = normalize(normal);
 	v = normalize(-position);
 
@@ -122,8 +156,12 @@ float3 lighting(float3 diffuse, float3 normal, float3 position, float3 specular,
 	I_diff = saturate(dot(l, n)) * (diffuse.xyz * light_diffuse.xyz);
 	I_spec = pow(saturate(dot(h, n)), shininess) * (specular.xyz * light_specular.xyz);
 
+	att = dist_factor(position);
+    spot = spot_factor(l);
+
     return (att * spot) * (I_diff + I_spec);
 }
+
 
 VS_OUTPUT VS_Main(VS_INPUT input)
 {

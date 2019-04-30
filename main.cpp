@@ -10,7 +10,7 @@ const float ViewAspect = (float)Width / (float)Height;
 const float TanHalfFov = tanf(Fov / 2);
 
 ID3DXMesh* ball = NULL;
-const int scale = 3;
+const int scale = 8;
 
 IDirect3DVertexBuffer9* vb = 0;
 // define vertex list
@@ -22,6 +22,7 @@ struct Vertex {
 ID3DXEffect* g_buffer_effect = 0;
 ID3DXEffect* directional_light_effect = 0;
 ID3DXEffect* point_light_effect = 0;
+ID3DXEffect* spot_light_effect = 0;
 
 HRESULT hr;
 ID3DXBuffer* errorBuffer = 0;
@@ -108,6 +109,27 @@ bool Setup()
 
 	if (FAILED(hr)) {
 		::MessageBox(0, "D3DXCreateEffectFromFile( PointLight.hlsl ) - Failed", 0, 0);
+		return false;
+	}
+
+	hr = D3DXCreateEffectFromFile(
+		Device,
+		"SpotLight.hlsl",
+		0,
+		0,
+		D3DXSHADER_DEBUG,
+		0,
+		&spot_light_effect,
+		&errorBuffer
+	);
+
+	if (errorBuffer) {
+		::MessageBox(0, (char*)errorBuffer->GetBufferPointer(), 0, 0);
+		d3d::Release<ID3DXBuffer*>(errorBuffer);
+	}
+
+	if (FAILED(hr)) {
+		::MessageBox(0, "D3DXCreateEffectFromFile( SpotLight.hlsl ) - Failed", 0, 0);
 		return false;
 	}
 
@@ -338,7 +360,7 @@ void deferredPipeline()
 	resumeRender();
 
 	//ID3DXEffect* effect = directional_light_effect;
-	ID3DXEffect* effect = point_light_effect;
+	ID3DXEffect* effect = spot_light_effect;
 
 	viewHandle = effect->GetParameterByName(0, "view");
 	D3DXHANDLE screenSizeHandle = effect->GetParameterByName(0, "screenSize");
@@ -392,16 +414,16 @@ bool Display(float timeDelta)
 		static float radius = 2.0f;
 
 		if (::GetAsyncKeyState(VK_LEFT) & 0x8000f)
-			angle -= timeDelta;
-
-		if (::GetAsyncKeyState(VK_RIGHT) & 0x8000f)
 			angle += timeDelta;
 
+		if (::GetAsyncKeyState(VK_RIGHT) & 0x8000f)
+			angle -= timeDelta;
+
 		if (::GetAsyncKeyState(VK_UP) & 0x8000f)
-			radius += 2.0f * timeDelta;
+			radius -= 2.0f * timeDelta;
 
 		if (::GetAsyncKeyState(VK_DOWN) & 0x8000f)
-			radius -= 2.0f * timeDelta;
+			radius += 2.0f * timeDelta;
 
 
 		D3DXMatrixTranslation(&world, 0, 0, 0);
