@@ -2,10 +2,11 @@ matrix world;
 matrix view;
 matrix proj;
 
-float3 blue = { .0f, .0f, 0.6f};
+float3 blue = { .0f, .0f, 1.0f};
 float3 white = { 1.0f, 1.0f, 1.0f};
 
-float shininess = 0.5;
+float scale_factor = 100.f;
+float shininess = 5.0f;
 
 struct VS_INPUT
 {
@@ -45,7 +46,7 @@ VS_OUTPUT VS_Main(VS_INPUT input)
     output.normal = float4(n.xyz / 2 + 0.5f, 0);
 
     // depth in view coordinate, store in x
-    output.depth = (viewPos.z / (viewPos.w * 100), 0, 0);
+    output.depth = (viewPos.z / (viewPos.w * scale_factor), 0, 0);
 
     return output;
 };
@@ -57,7 +58,7 @@ PS_OUTPUT PS_Main(VS_OUTPUT input)
     output.normal = float4(input.normal.xyz, 0);
     output.depth = float4(input.depth.x, 0, 0, 0);
     output.diffuse = float4(blue, 0);
-    output.specular = float4(white, shininess);
+    output.specular = float4(white, shininess / scale_factor);
 
     return output;
 }

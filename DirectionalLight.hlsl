@@ -6,11 +6,12 @@ float2 screenSize;
 float viewAspect;
 float tanHalfFov;
 
-float3 light_ambient = { 1.f, 1.f, 1.f };
+float scale_factor = 100.f;
+
+float3 light_ambient = { 0.2f, 0.2f, 0.2f };
 float3 light_diffuse = { 1.f, 1.f, 1.f };
 float3 light_specular = { 1.f, 1.f, 1.f };
-
-float3 light_direction = { 0.f, 0.f, -1.f };
+float3 light_direction = { -1.f, -1.f, -1.f };
 
 texture normalTex;
 sampler normalSampler = sampler_state
@@ -78,31 +79,31 @@ struct PS_OUTPUT
  * normal: object normal vector in camera space
  * position: object position in camera space
  * specular: object material specular
+ * shininess: shininess parameter
  */
 float3 lighting(float3 diffuse, float3 normal, float3 position, float3 specular, float shininess)
 {
-    float3 I_diff, I_spec, I_total;
+    float3 I_diff, I_spec;
     float3 l, v, n, h;
-    float att;
+    float att, spot;
+
+    att = 1;
+    spot = 1;
 
     n = normalize(normal);
     v = normalize(-position);
 
-    att = 1;
-
     // tranform light direction from wolrd space to camera space
     float4 light_dir = mul(float4(light_direction, 0), view);
     l = normalize(-light_dir.xyz);
-
-    I_diff = saturate(dot(l, n)) * (diffuse.xyz * light_diffuse.xyz);
-
     h = normalize(l + v);
 
-    I_spec = saturate(dot(l, n)) * pow(saturate(dot(h, n)), shininess) * (specular.xyz * light_specular.xyz);
+    I_diff = saturate(dot(l, n)) * (diffuse * light_diffuse);
+    I_spec = pow(saturate(dot(h, n)), shininess) * (specular * light_specular);
 
-    I_total = att * (I_diff + I_spec);
-    return I_total;
+    return (att * spot) * (I_diff + I_spec);
 }
+
 
 VS_OUTPUT VS_Main(VS_INPUT input)
 {
@@ -110,8 +111,6 @@ VS_OUTPUT VS_Main(VS_INPUT input)
 
     output.position = input.position;
     output.texCoord = input.position.xy * float2(0.5, -0.5) + float2(0.5, 0.5) + 0.5 / screenSize;
-
-    // field of view: in y direction
     output.cameraEye = float3(input.position.x * tanHalfFov * viewAspect, input.position.y * tanHalfFov, 1);
 
     return output;
@@ -126,16 +125,17 @@ PS_OUTPUT PS_Main(VS_OUTPUT input)
     float4 diffuse = tex2D(diffuseSampler, input.texCoord);
     float4 specular = tex2D(specularSampler, input.texCoord);
 
+    // [0, 1] => [-1, 1]
     normal = float4((normal.xyz - 0.5f) * 2, normal.w);
-    float4 position = float4(input.cameraEye * depth.x * 100, 1);
-    float shininess = specular.w;
+    float4 position = float4(input.cameraEye * depth.x * scale_factor, 1);
+    float shininess = specular.w * scale_factor;
 
-	float3 total_color = diffuse.rgb;
+    float3 I_amb = diffuse.rgb * light_ambient;
+	float3 I_tot = I_amb + lighting(diffuse.rgb, normal.xyz, position.xyz, specular.rgb, shininess);
 
-	total_color = total_color + lighting(diffuse.rgb, normal.xyz, position.xyz, specular.rgb, shininess);
+    // TODO: how to accumulate multi light shading
 
-    // don't work with the alpha
-	output.color = float4(total_color, 1);
+	output.color = float4(I_tot, 1);
     return output;
 }
 
