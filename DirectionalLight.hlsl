@@ -11,6 +11,7 @@ float scale_factor = 100.f;
 float3 light_ambient = { 0.2f, 0.2f, 0.2f };
 float3 light_diffuse = { 1.f, 1.f, 1.f };
 float3 light_specular = { 1.f, 1.f, 1.f };
+
 float3 light_direction = { -1.f, -1.f, -1.f };
 
 texture normalTex;
@@ -75,10 +76,10 @@ struct PS_OUTPUT
 };
 
 /*
- * diffuse: object material diffuse color
- * normal: object normal vector in camera space
- * position: object position in camera space
- * specular: object material specular
+ * diffuse: material diffuse color
+ * normal: point normal vector in camera space
+ * position: point position in camera space
+ * specular: material specular
  * shininess: shininess parameter
  */
 float3 lighting(float3 diffuse, float3 normal, float3 position, float3 specular, float shininess)

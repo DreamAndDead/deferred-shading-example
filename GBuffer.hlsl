@@ -5,7 +5,6 @@ matrix proj;
 float3 blue = { .0f, .0f, 1.0f};
 float3 white = { 1.0f, 1.0f, 1.0f};
 
-float scale_factor = 100.f;
 float shininess = 5.0f;
 
 struct VS_INPUT
@@ -46,7 +45,8 @@ VS_OUTPUT VS_Main(VS_INPUT input)
     output.normal = float4(n.xyz / 2 + 0.5f, 0);
 
     // depth in view coordinate, store in x
-    output.depth = (viewPos.z / (viewPos.w * scale_factor), 0, 0);
+    float depth = (float) viewPos.z / (float) viewPos.w;
+    output.depth = float3(depth, 0, 0);
 
     return output;
 };
@@ -56,9 +56,13 @@ PS_OUTPUT PS_Main(VS_OUTPUT input)
     PS_OUTPUT output = (PS_OUTPUT) 0;
 
     output.normal = float4(input.normal.xyz, 0);
-    output.depth = float4(input.depth.x, 0, 0, 0);
+
+    float depth = input.depth.x;
+    float int_depth = floor(depth);
+    float dec_depth = frac(depth);
+    output.depth = float4((int_depth / 256.f) / 256.f, (int_depth % 256.f) / 256.f, dec_depth, 0);
     output.diffuse = float4(blue, 0);
-    output.specular = float4(white, shininess / scale_factor);
+    output.specular = float4(white, shininess / 256.f);
 
     return output;
 }

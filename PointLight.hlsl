@@ -1,30 +1,21 @@
-matrix world;
+// point light
 matrix view;
-matrix proj;
 
-float2 screenSize = {640.f, 480.f};
+float2 screenSize;
+float viewAspect;
+float tanHalfFov;
 
-// point light type
+float3 light_ambient = { 0.2f, 0.2f, 0.2f };
 float3 light_diffuse = { 1.f, 1.f, 1.f };
 float3 light_specular = { 1.f, 1.f, 1.f };
-float3 light_ambient = { 1.f, 1.f, 1.f };
 
-float3 light_position = { 8.f, 0.f, 0.f };
-float3 light_direction = { 1.f, 0.f, 0.f };
+float3 light_position = { 0.f, 0.f, 5.f };
 
-float light_range = 20.f;
-float light_falloff = 1.f;
+float light_range = 8.0f;
 
 float light_attenuation0 = 0.1f;
 float light_attenuation1 = 0.1f;
 float light_attenuation2 = 0.1f;
-
-float light_theta = 1.f;
-float light_phi;
-
-
-float ViewAspect = 640.f / 480.f;
-float TanHalfFOV = 1.f;
 
 texture normalTex;
 sampler normalSampler = sampler_state
@@ -87,10 +78,10 @@ struct PS_OUTPUT
     float4 color : COLOR0;
 };
 
-float dist_factor(float3 object_view_pos)
+float dist_factor(float3 point_view_pos)
 {
 	float4 light_pos = mul(float4(light_position, 1), view);
-	float dist = distance(object_view_pos, light_pos.xyz / light_pos.w);
+	float dist = distance(point_view_pos, light_pos.xyz / light_pos.w);
 
 	float dist_att;
 	if (dist > light_range)
@@ -106,36 +97,32 @@ float dist_factor(float3 object_view_pos)
 }
 
 /*
- * diffuse: object material diffuse color
- * normal: object normal vector in camera space
- * position: object position in camera space
- * specular: object material specular
+ * diffuse: material diffuse color
+ * normal: point normal vector in camera space
+ * position: point position in camera space
+ * specular: material specular
+ * shininess: shininess parameter
  */
-float3 lighting(float3 diffuse, float3 normal, float3 position, float3 specular)
+float3 lighting(float3 diffuse, float3 normal, float3 position, float3 specular, float shininess)
 {
-	float3 I_diff, I_spec, I_total;
+	float3 I_diff, I_spec;
 	float3 l, v, n, h;
-	float att;
+	float att, spot;
+
+	att = dist_factor(position);
+    spot = 1;
 
 	n = normalize(normal);
 	v = normalize(-position);
 
-	// FIXME: test value
-	float m_shi = 1;
-
-	att = dist_factor(position);
-
 	float4 light_pos = mul(float4(light_position, 1), view);
 	l = normalize(light_pos.xyz / light_pos.w - position);
-
-	I_diff = saturate(dot(l, n)) * (diffuse.xyz * light_diffuse.xyz);
-
 	h = normalize(l + v);
 
-	I_spec = saturate(dot(l, n)) * pow(saturate(dot(h, n)), m_shi) * (specular.xyz * light_specular.xyz);
+	I_diff = saturate(dot(l, n)) * (diffuse.xyz * light_diffuse.xyz);
+	I_spec = pow(saturate(dot(h, n)), shininess) * (specular.xyz * light_specular.xyz);
 
-	I_total = att * (I_diff + I_spec);
-	return I_total;
+    return (att * spot) * (I_diff + I_spec);
 }
 
 VS_OUTPUT VS_Main(VS_INPUT input)
@@ -143,10 +130,8 @@ VS_OUTPUT VS_Main(VS_INPUT input)
     VS_OUTPUT output;
 
     output.position = input.position;
-    output.texCoord = input.position.xy * float2(0.5, -0.5) + float2(0.5, 0.5);// +0.5 / screenSize;
-
-    // field of view: in y direction
-    output.cameraEye = float3(input.position.x * TanHalfFOV * ViewAspect, input.position.y * TanHalfFOV, 1);
+    output.texCoord = input.position.xy * float2(0.5, -0.5) + float2(0.5, 0.5) + 0.5 / screenSize;
+    output.cameraEye = float3(input.position.x * tanHalfFov * viewAspect, input.position.y * tanHalfFov, 1);
 
     return output;
 };
@@ -160,14 +145,18 @@ PS_OUTPUT PS_Main(VS_OUTPUT input)
     float4 diffuse = tex2D(diffuseSampler, input.texCoord);
     float4 specular = tex2D(specularSampler, input.texCoord);
 
-    float4 position = float4(input.cameraEye * depth.x * 100, 1);
+    // [0, 1] => [-1, 1]
+    normal = float4((normal.xyz - 0.5f) * 2, normal.w);
+    float d = depth.x * 256.f * 256.f + depth.y * 256.f + depth.z;
+    float4 position = float4(input.cameraEye * d, 1);
+    float shininess = specular.w * 256.f;
 
-	float3 total_color = diffuse.rgb;
-	float alpha = diffuse.a;
+    float3 I_amb = diffuse.rgb * light_ambient;
+	float3 I_tot = I_amb + lighting(diffuse.rgb, normal.xyz, position.xyz, specular.rgb, shininess);
 
-	total_color = total_color + lighting(diffuse.rgb, normal.xyz, position.xyz, specular.rgb);
+    // TODO: how to accumulate multi light shading
 
-	output.color = float4(total_color, alpha);
+	output.color = float4(I_tot, 1);
     return output;
 }
 
@@ -177,9 +166,6 @@ Technique Plain
     {
         VertexShader = compile vs_3_0 VS_Main();
         PixelShader = compile ps_3_0 PS_Main();
-
-		ColorWriteEnable = 0xFFFFFFFF;
-		ZWriteEnable = 0;
     }
 }
 
