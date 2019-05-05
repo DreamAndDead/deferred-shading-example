@@ -241,6 +241,10 @@ VS_OUTPUT VS_BackFace(VS_INPUT input)
     float4 norm_proj_pos = proj_pos / proj_pos.w;
     output.cameraEye = float3(norm_proj_pos.x * tanHalfFov * viewAspect, norm_proj_pos.y * tanHalfFov, 1);
 
+    // -0.5, because the tex coord and proj screen coord are opposite
+    // 0.5 / screenParam
+    // ref https://docs.microsoft.com/en-us/windows/desktop/direct3d10/d3d10-graphics-programming-guide-resources-coordinates
+    // and https://docs.microsoft.com/en-us/windows/desktop/direct3d9/directly-mapping-texels-to-pixels
     output.texCoord = norm_proj_pos.xy * float2(0.5, -0.5) + float2(0.5, 0.5) + 0.5 / screenSize;
 
     return output;

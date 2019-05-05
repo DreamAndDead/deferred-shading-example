@@ -1,6 +1,8 @@
 #include <cstdlib>
 #include "d3dUtility.h"
 
+#define STENCIL_CULLING
+
 IDirect3DDevice9* Device = 0;
 
 const int Width = 640;
@@ -31,6 +33,7 @@ struct Vertex {
  * -LIGHT_MOVEMENT_LIMIT <= y <= LIGHT_MOVEMENT_LIMIT 
 */
 #define LIGHT_MOVEMENT_LIMIT 15
+
 
 D3DLIGHT9 lights[LIGHT_NUM];
 
@@ -376,8 +379,8 @@ void deferredPipeline()
 			break;
 		}
 
+#ifdef STENCIL_CULLING
 		worldHandle = effect->GetParameterByName(0, "world");
-		viewHandle = effect->GetParameterByName(0, "view");
 		projHandle = effect->GetParameterByName(0, "proj");
 
 		D3DXMATRIX scale;
@@ -387,8 +390,11 @@ void deferredPipeline()
 		world = scale * world;
 
 		effect->SetMatrix(worldHandle, &world);
-		effect->SetMatrix(viewHandle, &view);
 		effect->SetMatrix(projHandle, &proj);
+#endif
+
+		viewHandle = effect->GetParameterByName(0, "view");
+		effect->SetMatrix(viewHandle, &view);
 
 		D3DXHANDLE screenSizeHandle = effect->GetParameterByName(0, "screenSize");
 		D3DXHANDLE viewAspectHandle = effect->GetParameterByName(0, "viewAspect");
@@ -468,9 +474,12 @@ void deferredPipeline()
 		effect->SetTexture(specularHandle, specularTex);
 		effect->SetTexture(stashHandle, stashTex);
 
-		// hTech = effect->GetTechniqueByName("Plain");
-
+#ifdef STENCIL_CULLING
 		hTech = effect->GetTechniqueByName("StencilCulling");
+#else
+		hTech = effect->GetTechniqueByName("Plain");
+#endif
+
 		effect->SetTechnique(hTech);
 
 		Device->Clear(0, 0, D3DCLEAR_STENCIL, 0x00000000, 1.0f, 0);
@@ -482,10 +491,11 @@ void deferredPipeline()
 		{
 			effect->BeginPass(i);
 
-			// drawScreenQuad();
-
-			//drawLightBall();
+#ifdef STENCIL_CULLING
 			drawBall();
+#else
+			drawScreenQuad();
+#endif
 
 			effect->EndPass();
 		}
