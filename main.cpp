@@ -21,7 +21,7 @@ struct Vertex {
 };
 
 
-#define LIGHT_NUM 2
+#define LIGHT_NUM 5
 
 D3DLIGHT9 lights[LIGHT_NUM];
 
@@ -46,6 +46,9 @@ IDirect3DSurface9* diffuseSurface = 0;
 
 IDirect3DTexture9* specularTex = 0;
 IDirect3DSurface9* specularSurface = 0;
+
+IDirect3DTexture9* stashTex = 0;
+IDirect3DSurface9* stashSurface = 0;
 
 D3DXMATRIX world;
 D3DXMATRIX view;
@@ -191,6 +194,19 @@ bool Setup()
 
 	specularTex->GetSurfaceLevel(0, &specularSurface);
 
+	hr = D3DXCreateTexture(
+		Device,
+		Width,
+		Height,
+		D3DX_DEFAULT,
+		D3DUSAGE_RENDERTARGET,
+		D3DFMT_A8R8G8B8,
+		D3DPOOL_DEFAULT,
+		&stashTex
+	);
+
+	stashTex->GetSurfaceLevel(0, &stashSurface);
+
 	Device->CreateVertexBuffer(
 		6 * sizeof(Vertex),
 		0,
@@ -241,7 +257,7 @@ bool Setup()
 
 	// init lights here
 	for (int i = 0; i < LIGHT_NUM; i++) {
-		lights[i] = d3d::InitLight(D3DLIGHT_POINT);
+		lights[i] = d3d::InitLight(D3DLIGHT_SPOT);
 	}
 
 	return true;
@@ -369,8 +385,9 @@ void deferredPipeline()
 	// deferred light phase
 	resumeRender();
 
-	// a big loop of lights array
+	Device->ColorFill(stashSurface, NULL, D3DXCOLOR(0.f, 0.f, 0.f, 0.f));
 
+	// a big loop of lights array
 	for (int i = 0; i < LIGHT_NUM; i++) {
 		D3DLIGHT9 light = lights[i];
 
@@ -460,11 +477,13 @@ void deferredPipeline()
 		D3DXHANDLE depthHandle = effect->GetParameterByName(0, "depthTex");
 		D3DXHANDLE diffuseHandle = effect->GetParameterByName(0, "diffuseTex");
 		D3DXHANDLE specularHandle = effect->GetParameterByName(0, "specularTex");
+		D3DXHANDLE stashHandle = effect->GetParameterByName(0, "stashTex");
 
 		effect->SetTexture(normalHandle, normalTex);
 		effect->SetTexture(depthHandle, depthTex);
 		effect->SetTexture(diffuseHandle, diffuseTex);
 		effect->SetTexture(specularHandle, specularTex);
+		effect->SetTexture(stashHandle, stashTex);
 
 		hTech = effect->GetTechniqueByName("Plain");
 		effect->SetTechnique(hTech);
@@ -484,6 +503,9 @@ void deferredPipeline()
 		effect->End();
 
 
+		// copy origin output to stash surface
+	    // https://docs.microsoft.com/en-us/previous-versions/windows/desktop/bb324163(v=vs.85)
+		Device->StretchRect(originRenderTarget, NULL, stashSurface, NULL, D3DTEXF_NONE);
 	}
 
 

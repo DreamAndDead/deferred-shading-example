@@ -74,6 +74,17 @@ sampler specularSampler = sampler_state
     AddressV = clamp;
 };
 
+texture stashTex;
+sampler stashSampler = sampler_state
+{
+    Texture = (stashTex);
+    MinFilter = LINEAR;
+    MagFilter = LINEAR;
+    MipFilter = None;
+    AddressU = clamp;
+    AddressV = clamp;
+};
+
 struct VS_INPUT
 {
     float4 position : POSITION0;
@@ -141,6 +152,7 @@ PS_OUTPUT PS_Main(VS_OUTPUT input)
     float4 depth = tex2D(depthSampler, input.texCoord);
     float4 diffuse = tex2D(diffuseSampler, input.texCoord);
     float4 specular = tex2D(specularSampler, input.texCoord);
+    float4 stash = tex2D(stashSampler, input.texCoord);
 
     // [0, 1] => [-1, 1]
     normal = float4((normal.xyz - 0.5f) * 2, normal.w);
@@ -151,9 +163,7 @@ PS_OUTPUT PS_Main(VS_OUTPUT input)
     float3 I_amb = diffuse.rgb * light_ambient;
 	float3 I_tot = I_amb + lighting(diffuse.rgb, normal.xyz, position.xyz, specular.rgb, shininess);
 
-    // TODO: how to accumulate multi light shading
-
-	output.color = float4(I_tot, 1);
+	output.color = float4(I_tot + stash.rgb, 1);
     return output;
 }
 
