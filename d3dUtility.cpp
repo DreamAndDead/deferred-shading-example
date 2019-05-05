@@ -158,12 +158,12 @@ D3DLIGHT9 d3d::InitLight(D3DLIGHTTYPE type)
 	light.Position  = position;
 	light.Direction  = direction;
 
-	light.Range        = 8.0f;
+	light.Range        = 6.0f;
 	light.Falloff      = 4.0f;
 
-	light.Attenuation0 = 0.1f;
-	light.Attenuation1 = 0.1f;
-	light.Attenuation2 = 0.1f;
+	light.Attenuation0 = 0.2f;
+	light.Attenuation1 = 0.2f;
+	light.Attenuation2 = 0.2f;
 
 	light.Theta = 1.f;
 	light.Phi = 2.f;

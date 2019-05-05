@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include "d3dUtility.h"
 
 IDirect3DDevice9* Device = 0;
@@ -12,7 +13,6 @@ const float TanHalfFov = tanf(Fov / 2);
 const int ballMesh = 20;
 
 ID3DXMesh* ball = NULL;
-const int scale = 8;
 
 IDirect3DVertexBuffer9* vb = 0;
 // define vertex list
@@ -21,7 +21,15 @@ struct Vertex {
 };
 
 
-#define LIGHT_NUM 5
+#define LIGHT_NUM 20
+
+/*
+ * in x-y plane
+ *
+ * -LIGHT_MOVEMENT_LIMIT <= x <= LIGHT_MOVEMENT_LIMIT 
+ * -LIGHT_MOVEMENT_LIMIT <= y <= LIGHT_MOVEMENT_LIMIT 
+*/
+#define LIGHT_MOVEMENT_LIMIT 15
 
 D3DLIGHT9 lights[LIGHT_NUM];
 
@@ -257,7 +265,11 @@ bool Setup()
 
 	// init lights here
 	for (int i = 0; i < LIGHT_NUM; i++) {
-		lights[i] = d3d::InitLight(D3DLIGHT_SPOT);
+		lights[i] = d3d::InitLight(D3DLIGHT_POINT);
+
+		// random position
+		lights[i].Position.x = rand() % (LIGHT_MOVEMENT_LIMIT * 2) - LIGHT_MOVEMENT_LIMIT;
+		lights[i].Position.y = rand() % (LIGHT_MOVEMENT_LIMIT * 2) - LIGHT_MOVEMENT_LIMIT;
 	}
 
 	return true;
@@ -328,8 +340,8 @@ void fixedPipeline()
 	Device->Clear(0, 0, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL, 0x00000000, 1.0f, 0);
 	Device->BeginScene();
 
-	for (int x = -scale; x <= scale; x++) {
-		for (int y = -scale; y <= scale; y++) {
+	for (int x = -LIGHT_MOVEMENT_LIMIT; x <= LIGHT_MOVEMENT_LIMIT; x++) {
+		for (int y = -LIGHT_MOVEMENT_LIMIT; y <= LIGHT_MOVEMENT_LIMIT; y++) {
 			D3DXMatrixTranslation(&world, x, y, 0);
 			Device->SetTransform(D3DTS_WORLD, &world);
 
@@ -362,8 +374,8 @@ void deferredPipeline()
 	hTech = g_buffer_effect->GetTechniqueByName("main");
 	g_buffer_effect->SetTechnique(hTech);
 
-	for (int x = -scale; x <= scale; x++) {
-		for (int y = -scale; y <= scale; y++) {
+	for (int x = -LIGHT_MOVEMENT_LIMIT; x <= LIGHT_MOVEMENT_LIMIT; x++) {
+		for (int y = -LIGHT_MOVEMENT_LIMIT; y <= LIGHT_MOVEMENT_LIMIT; y++) {
 			D3DXMatrixTranslation(&world, x, y, 0);
 			g_buffer_effect->SetMatrix(worldHandle, &world);
 
@@ -519,7 +531,8 @@ bool Display(float timeDelta)
 	if (Device)
 	{
 		static float angle = 0;
-		static float radius = 2.0f;
+		static float height = 8.f;
+		static float radius = 5.0f;
 
 		if (::GetAsyncKeyState(VK_LEFT) & 0x8000f)
 			angle += timeDelta;
@@ -528,15 +541,28 @@ bool Display(float timeDelta)
 			angle -= timeDelta;
 
 		if (::GetAsyncKeyState(VK_UP) & 0x8000f)
-			radius -= 2.0f * timeDelta;
+		{
+			if (::GetAsyncKeyState(VK_CONTROL) & 0x8000f) {
+				height -= 2.0f * timeDelta;
+			}
+			else {
+				radius -= 2.0f * timeDelta;
+			}
+		}
 
 		if (::GetAsyncKeyState(VK_DOWN) & 0x8000f)
-			radius += 2.0f * timeDelta;
-
+		{
+			if (::GetAsyncKeyState(VK_CONTROL) & 0x8000f) {
+				height += 2.0f * timeDelta;
+			}
+			else {
+				radius += 2.0f * timeDelta;
+			}
+		}
 
 		D3DXMatrixTranslation(&world, 0, 0, 0);
 
-		D3DXVECTOR3 position(cosf(angle) * radius, sinf(angle) * radius, radius);
+		D3DXVECTOR3 position(cosf(angle) * radius, sinf(angle) * radius, height);
 		D3DXVECTOR3 target(0.0f, 0.0f, 0.0f);
 		D3DXVECTOR3 up(0.0f, 0.0f, 1.0f);
 		D3DXMatrixLookAtLH(&view, &position, &target, &up);
@@ -548,6 +574,31 @@ bool Display(float timeDelta)
 			ViewAspect,
 			1.0f,
 			1000.0f);
+
+		// update lights positions
+		for (int i = 0; i < LIGHT_NUM; i++) {
+			D3DVECTOR p = lights[i].Position;
+
+			// move in x-y plane
+			p.x = p.x + timeDelta * 3;
+			p.y = p.y + timeDelta * 3;
+
+			if (p.x > LIGHT_MOVEMENT_LIMIT) {
+				p.x = -LIGHT_MOVEMENT_LIMIT;
+			}
+			else if (p.x < -LIGHT_MOVEMENT_LIMIT) {
+				p.x = LIGHT_MOVEMENT_LIMIT;
+			}
+
+			if (p.y > LIGHT_MOVEMENT_LIMIT) {
+				p.y = -LIGHT_MOVEMENT_LIMIT;
+			}
+			else if (p.y < -LIGHT_MOVEMENT_LIMIT) {
+				p.y = LIGHT_MOVEMENT_LIMIT;
+			}
+
+			lights[i].Position = p;
+		}
 
 		//fixedPipeline();
 		deferredPipeline();
