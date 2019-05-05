@@ -177,3 +177,13 @@ Technique Plain
 }
 
 // no Technique StencilCulling for directional light
+// just copy Plain Technique for code simplicity
+Technique StencilCulling
+{
+    Pass Light
+    {
+        VertexShader = compile vs_3_0 VS_Main();
+        PixelShader = compile ps_3_0 PS_Main();
+    }
+}
+

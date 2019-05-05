@@ -10,18 +10,19 @@ const float Fov = D3DX_PI * 0.5f; // 90 deg, tan(fov/2) = 1
 const float ViewAspect = (float)Width / (float)Height;
 const float TanHalfFov = tanf(Fov / 2);
 
-const int ballMesh = 20;
+const int ballMesh = 50;
 
 ID3DXMesh* ball = NULL;
 
 IDirect3DVertexBuffer9* vb = 0;
+
 // define vertex list
 struct Vertex {
 	float x, y, z;
 };
 
 
-#define LIGHT_NUM 20
+#define LIGHT_NUM 10
 
 /*
  * in x-y plane
@@ -304,53 +305,7 @@ void drawScreenQuad()
 void drawBall()
 {
 	Device->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL);
-	Device->SetMaterial(&(d3d::BLUE_MTRL));
 	ball->DrawSubset(0);
-}
-
-void fixedPipeline()
-{
-	//
-	// Setup a point light.  Note that the point light
-	// is positioned at the origin.
-	//
-
-	D3DLIGHT9 point = d3d::InitLight(D3DLIGHT_POINT);
-
-	//
-	// Set and Enable the light.
-	//
-
-	Device->SetLight(0, &point);
-	Device->LightEnable(0, true);
-
-	//
-	// Set lighting related render states.
-	//
-
-	Device->SetRenderState(D3DRS_NORMALIZENORMALS, true);
-	Device->SetRenderState(D3DRS_SPECULARENABLE, true);
-
-	Device->SetTransform(D3DTS_VIEW, &view);
-	Device->SetTransform(D3DTS_PROJECTION, &proj);
-
-	//
-	// Draw the scene:
-	//
-	Device->Clear(0, 0, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL, 0x00000000, 1.0f, 0);
-	Device->BeginScene();
-
-	for (int x = -LIGHT_MOVEMENT_LIMIT; x <= LIGHT_MOVEMENT_LIMIT; x++) {
-		for (int y = -LIGHT_MOVEMENT_LIMIT; y <= LIGHT_MOVEMENT_LIMIT; y++) {
-			D3DXMatrixTranslation(&world, x, y, 0);
-			Device->SetTransform(D3DTS_WORLD, &world);
-
-			drawBall();
-		}
-	}
-
-	Device->EndScene();
-	Device->Present(0, 0, 0, 0);
 }
 
 void deferredPipeline()
@@ -364,8 +319,8 @@ void deferredPipeline()
 
 	// G buffer phase
 	setMRT();
-
 	Device->Clear(0, 0, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL, 0x00000000, 1.0f, 0);
+
 	Device->BeginScene();
 
 	D3DXHANDLE hTech = 0;
@@ -393,11 +348,15 @@ void deferredPipeline()
 		}
 	}
 
+	Device->EndScene();
 
 	// deferred light phase
 	resumeRender();
 
+	Device->Clear(0, 0, D3DCLEAR_TARGET | D3DCLEAR_STENCIL, 0x00000000, 1.0f, 0);
 	Device->ColorFill(stashSurface, NULL, D3DXCOLOR(0.f, 0.f, 0.f, 0.f));
+
+	Device->BeginScene();
 
 	// a big loop of lights array
 	for (int i = 0; i < LIGHT_NUM; i++) {
@@ -417,12 +376,24 @@ void deferredPipeline()
 			break;
 		}
 
+		worldHandle = effect->GetParameterByName(0, "world");
 		viewHandle = effect->GetParameterByName(0, "view");
+		projHandle = effect->GetParameterByName(0, "proj");
+
+		D3DXMATRIX scale;
+		D3DXMatrixScaling(&scale, light.Range * 2, light.Range * 2, light.Range * 2);
+		D3DXMatrixTranslation(&world, light.Position.x, light.Position.y, light.Position.z);
+
+		world = scale * world;
+
+		effect->SetMatrix(worldHandle, &world);
+		effect->SetMatrix(viewHandle, &view);
+		effect->SetMatrix(projHandle, &proj);
+
 		D3DXHANDLE screenSizeHandle = effect->GetParameterByName(0, "screenSize");
 		D3DXHANDLE viewAspectHandle = effect->GetParameterByName(0, "viewAspect");
 		D3DXHANDLE tanHalfFovHandle = effect->GetParameterByName(0, "tanHalfFov");
 
-		effect->SetMatrix(viewHandle, &view);
 		effect->SetFloatArray(screenSizeHandle, ScreenSize, 2);
 		effect->SetFloat(viewAspectHandle, ViewAspect);
 		effect->SetFloat(tanHalfFovHandle, TanHalfFov);
@@ -497,8 +468,12 @@ void deferredPipeline()
 		effect->SetTexture(specularHandle, specularTex);
 		effect->SetTexture(stashHandle, stashTex);
 
-		hTech = effect->GetTechniqueByName("Plain");
+		// hTech = effect->GetTechniqueByName("Plain");
+
+		hTech = effect->GetTechniqueByName("StencilCulling");
 		effect->SetTechnique(hTech);
+
+		Device->Clear(0, 0, D3DCLEAR_STENCIL, 0x00000000, 1.0f, 0);
 
 		numPasses = 0;
 		effect->Begin(&numPasses, 0);
@@ -507,13 +482,15 @@ void deferredPipeline()
 		{
 			effect->BeginPass(i);
 
-			drawScreenQuad();
+			// drawScreenQuad();
+
+			//drawLightBall();
+			drawBall();
 
 			effect->EndPass();
 		}
 
 		effect->End();
-
 
 		// copy origin output to stash surface
 	    // https://docs.microsoft.com/en-us/previous-versions/windows/desktop/bb324163(v=vs.85)
@@ -600,7 +577,6 @@ bool Display(float timeDelta)
 			lights[i].Position = p;
 		}
 
-		//fixedPipeline();
 		deferredPipeline();
 	}
 	return true;
