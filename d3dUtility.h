@@ -50,10 +50,7 @@ namespace d3d
 	//
 	// Lights
 	//
-
-	D3DLIGHT9 InitDirectionalLight(D3DXVECTOR3* direction, D3DXCOLOR* color);
-	D3DLIGHT9 InitPointLight(D3DXVECTOR3* position, D3DXCOLOR* color);
-	D3DLIGHT9 InitSpotLight(D3DXVECTOR3* position, D3DXVECTOR3* direction, D3DXCOLOR* color);
+	D3DLIGHT9 InitLight(D3DLIGHTTYPE type);
 
 	//
 	// Materials

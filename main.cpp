@@ -4,10 +4,12 @@ IDirect3DDevice9* Device = 0;
 
 const int Width = 640;
 const int Height = 480;
-const float ScreenSize[2] = {(float)Width, (float)Height};
+const float ScreenSize[2] = { (float)Width, (float)Height };
 const float Fov = D3DX_PI * 0.5f; // 90 deg, tan(fov/2) = 1
 const float ViewAspect = (float)Width / (float)Height;
 const float TanHalfFov = tanf(Fov / 2);
+
+const int ballMesh = 20;
 
 ID3DXMesh* ball = NULL;
 const int scale = 8;
@@ -15,9 +17,13 @@ const int scale = 8;
 IDirect3DVertexBuffer9* vb = 0;
 // define vertex list
 struct Vertex {
-	float x, y, z, w;
+	float x, y, z;
 };
 
+
+#define LIGHT_NUM 2
+
+D3DLIGHT9 lights[LIGHT_NUM];
 
 ID3DXEffect* g_buffer_effect = 0;
 ID3DXEffect* directional_light_effect = 0;
@@ -47,7 +53,7 @@ D3DXMATRIX proj;
 
 bool Setup()
 {
-	D3DXCreateSphere(Device, 0.5f, 20, 20, &ball, 0);
+	D3DXCreateSphere(Device, 0.5f, ballMesh, ballMesh, &ball, 0);
 
 	hr = D3DXCreateEffectFromFile(
 		Device,
@@ -232,6 +238,12 @@ bool Setup()
 
 	vb->Unlock();
 
+
+	// init lights here
+	for (int i = 0; i < LIGHT_NUM; i++) {
+		lights[i] = d3d::InitLight(D3DLIGHT_POINT);
+	}
+
 	return true;
 }
 
@@ -275,9 +287,7 @@ void fixedPipeline()
 	// is positioned at the origin.
 	//
 
-	D3DXVECTOR3 pos(7.0f, 0.0f, 0.0f);
-	D3DXCOLOR   c = d3d::WHITE;
-	D3DLIGHT9 point = d3d::InitPointLight(&pos, &c);
+	D3DLIGHT9 point = d3d::InitLight(D3DLIGHT_POINT);
 
 	//
 	// Set and Enable the light.
@@ -359,46 +369,122 @@ void deferredPipeline()
 	// deferred light phase
 	resumeRender();
 
-	//ID3DXEffect* effect = directional_light_effect;
-	ID3DXEffect* effect = spot_light_effect;
+	// a big loop of lights array
 
-	viewHandle = effect->GetParameterByName(0, "view");
-	D3DXHANDLE screenSizeHandle = effect->GetParameterByName(0, "screenSize");
-	D3DXHANDLE viewAspectHandle = effect->GetParameterByName(0, "viewAspect");
-	D3DXHANDLE tanHalfFovHandle = effect->GetParameterByName(0, "tanHalfFov");
+	for (int i = 0; i < LIGHT_NUM; i++) {
+		D3DLIGHT9 light = lights[i];
 
-	effect->SetMatrix(viewHandle, &view);
-	effect->SetFloatArray(screenSizeHandle, ScreenSize, 2);
-	effect->SetFloat(viewAspectHandle, ViewAspect);
-	effect->SetFloat(tanHalfFovHandle, TanHalfFov);
+		ID3DXEffect* effect = NULL;
+
+		switch (light.Type) {
+		case D3DLIGHT_DIRECTIONAL:
+			effect = directional_light_effect;
+			break;
+		case D3DLIGHT_POINT:
+			effect = point_light_effect;
+			break;
+		case D3DLIGHT_SPOT:
+			effect = spot_light_effect;
+			break;
+		}
+
+		viewHandle = effect->GetParameterByName(0, "view");
+		D3DXHANDLE screenSizeHandle = effect->GetParameterByName(0, "screenSize");
+		D3DXHANDLE viewAspectHandle = effect->GetParameterByName(0, "viewAspect");
+		D3DXHANDLE tanHalfFovHandle = effect->GetParameterByName(0, "tanHalfFov");
+
+		effect->SetMatrix(viewHandle, &view);
+		effect->SetFloatArray(screenSizeHandle, ScreenSize, 2);
+		effect->SetFloat(viewAspectHandle, ViewAspect);
+		effect->SetFloat(tanHalfFovHandle, TanHalfFov);
 
 
-	D3DXHANDLE normalHandle = effect->GetParameterByName(0, "normalTex");
-	D3DXHANDLE depthHandle = effect->GetParameterByName(0, "depthTex");
-	D3DXHANDLE diffuseHandle = effect->GetParameterByName(0, "diffuseTex");
-	D3DXHANDLE specularHandle = effect->GetParameterByName(0, "specularTex");
+		// light parameters here
+		D3DXHANDLE lightAmbientHandle = effect->GetParameterByName(0, "light_ambient");
+		D3DXHANDLE lightDiffuseHandle = effect->GetParameterByName(0, "light_diffuse");
+		D3DXHANDLE lightSpecularHandle = effect->GetParameterByName(0, "light_specular");
 
-	effect->SetTexture(normalHandle, normalTex);
-	effect->SetTexture(depthHandle, depthTex);
-	effect->SetTexture(diffuseHandle, diffuseTex);
-	effect->SetTexture(specularHandle, specularTex);
+		D3DXHANDLE lightPositionHandle = effect->GetParameterByName(0, "light_position");
+		D3DXHANDLE lightDirectionHandle = effect->GetParameterByName(0, "light_direction");
 
-	hTech = effect->GetTechniqueByName("Plain");
-	effect->SetTechnique(hTech);
+		D3DXHANDLE lightRangeHandle = effect->GetParameterByName(0, "light_range");
+		D3DXHANDLE lightFalloffHandle = effect->GetParameterByName(0, "light_falloff");
 
-	numPasses = 0;
-	effect->Begin(&numPasses, 0);
+		D3DXHANDLE lightAttenuation0Handle = effect->GetParameterByName(0, "light_attenuation0");
+		D3DXHANDLE lightAttenuation1Handle = effect->GetParameterByName(0, "light_attenuation1");
+		D3DXHANDLE lightAttenuation2Handle = effect->GetParameterByName(0, "light_attenuation2");
 
-	for (int i = 0; i < numPasses; i++)
-	{
-		effect->BeginPass(i);
+		D3DXHANDLE lightThetaHandle = effect->GetParameterByName(0, "light_theta");
+		D3DXHANDLE lightPhiHandle = effect->GetParameterByName(0, "light_phi");
 
-		drawScreenQuad();
+		float floatArray[3];
 
-		effect->EndPass();
+		floatArray[0] = light.Ambient.r;
+		floatArray[1] = light.Ambient.g;
+		floatArray[2] = light.Ambient.b;
+		effect->SetFloatArray(lightAmbientHandle, floatArray, 3);
+
+		floatArray[0] = light.Diffuse.r;
+		floatArray[1] = light.Diffuse.g;
+		floatArray[2] = light.Diffuse.b;
+		effect->SetFloatArray(lightDiffuseHandle, floatArray, 3);
+
+		floatArray[0] = light.Specular.r;
+		floatArray[1] = light.Specular.g;
+		floatArray[2] = light.Specular.b;
+		effect->SetFloatArray(lightSpecularHandle, floatArray, 3);
+
+
+		floatArray[0] = light.Position.x;
+		floatArray[1] = light.Position.y;
+		floatArray[2] = light.Position.z;
+		effect->SetFloatArray(lightPositionHandle, floatArray, 3);
+
+		floatArray[0] = light.Direction.x;
+		floatArray[1] = light.Direction.y;
+		floatArray[2] = light.Direction.z;
+		effect->SetFloatArray(lightDirectionHandle, floatArray, 3);
+
+		effect->SetFloat(lightRangeHandle, light.Range);
+		effect->SetFloat(lightFalloffHandle, light.Falloff);
+
+		effect->SetFloat(lightAttenuation0Handle, light.Attenuation0);
+		effect->SetFloat(lightAttenuation1Handle, light.Attenuation1);
+		effect->SetFloat(lightAttenuation2Handle, light.Attenuation2);
+
+		effect->SetFloat(lightThetaHandle, light.Theta);
+		effect->SetFloat(lightPhiHandle, light.Phi);
+
+
+		D3DXHANDLE normalHandle = effect->GetParameterByName(0, "normalTex");
+		D3DXHANDLE depthHandle = effect->GetParameterByName(0, "depthTex");
+		D3DXHANDLE diffuseHandle = effect->GetParameterByName(0, "diffuseTex");
+		D3DXHANDLE specularHandle = effect->GetParameterByName(0, "specularTex");
+
+		effect->SetTexture(normalHandle, normalTex);
+		effect->SetTexture(depthHandle, depthTex);
+		effect->SetTexture(diffuseHandle, diffuseTex);
+		effect->SetTexture(specularHandle, specularTex);
+
+		hTech = effect->GetTechniqueByName("Plain");
+		effect->SetTechnique(hTech);
+
+		numPasses = 0;
+		effect->Begin(&numPasses, 0);
+
+		for (int i = 0; i < numPasses; i++)
+		{
+			effect->BeginPass(i);
+
+			drawScreenQuad();
+
+			effect->EndPass();
+		}
+
+		effect->End();
+
+
 	}
-
-	effect->End();
 
 
 	Device->EndScene();

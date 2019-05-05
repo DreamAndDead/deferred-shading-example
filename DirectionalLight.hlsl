@@ -6,13 +6,29 @@ float2 screenSize;
 float viewAspect;
 float tanHalfFov;
 
-float scale_factor = 100.f;
 
-float3 light_ambient = { 0.2f, 0.2f, 0.2f };
-float3 light_diffuse = { 1.f, 1.f, 1.f };
-float3 light_specular = { 1.f, 1.f, 1.f };
 
-float3 light_direction = { -1.f, -1.f, -1.f };
+float3 light_ambient;
+float3 light_diffuse;
+float3 light_specular;
+
+float3 light_direction;
+
+
+
+/* not used light parameters */
+float3 light_position;
+
+float light_range;
+float light_falloff;
+
+float light_attenuation0;
+float light_attenuation1;
+float light_attenuation2;
+
+float light_theta;
+float light_phi;
+/* not used light parameters */
 
 texture normalTex;
 sampler normalSampler = sampler_state
@@ -128,8 +144,9 @@ PS_OUTPUT PS_Main(VS_OUTPUT input)
 
     // [0, 1] => [-1, 1]
     normal = float4((normal.xyz - 0.5f) * 2, normal.w);
-    float4 position = float4(input.cameraEye * depth.x * scale_factor, 1);
-    float shininess = specular.w * scale_factor;
+    float d = depth.x * 256.f * 256.f + depth.y * 256.f + depth.z;
+    float4 position = float4(input.cameraEye * d, 1);
+    float shininess = specular.w * 256.f;
 
     float3 I_amb = diffuse.rgb * light_ambient;
 	float3 I_tot = I_amb + lighting(diffuse.rgb, normal.xyz, position.xyz, specular.rgb, shininess);

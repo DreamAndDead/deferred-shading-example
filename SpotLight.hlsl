@@ -5,22 +5,35 @@ float2 screenSize;
 float viewAspect;
 float tanHalfFov;
 
-float3 light_ambient = { 0.2f, 0.2f, 0.2f };
-float3 light_diffuse = { 1.f, 1.f, 1.f };
-float3 light_specular = { 1.f, 1.f, 1.f };
 
-float3 light_position = { 0.f, 0.f, 5.f };
-float3 light_direction = { 0.f, 0.f, -1.f };
 
-float light_range = 8.0f;
-float light_falloff = 2.f;
 
-float light_attenuation0 = 0.0f;
-float light_attenuation1 = 0.0f;
-float light_attenuation2 = 0.1f;
+float3 light_ambient;
+float3 light_diffuse;
+float3 light_specular;
 
-float light_theta = 1.f;
-float light_phi = 2.0f;
+float3 light_position;
+float3 light_direction;
+
+float light_range;
+float light_falloff;
+
+float light_attenuation0;
+float light_attenuation1;
+float light_attenuation2;
+
+float light_theta;
+float light_phi;
+
+
+
+
+/* not used light parameters */
+
+/* not used light parameters */
+
+
+
 
 texture normalTex;
 sampler normalSampler = sampler_state

@@ -140,21 +140,33 @@ int d3d::EnterMsgLoop( bool (*ptr_display)(float timeDelta) )
     return msg.wParam;
 }
 
-D3DLIGHT9 d3d::InitPointLight(D3DXVECTOR3* position, D3DXCOLOR* color)
+D3DLIGHT9 d3d::InitLight(D3DLIGHTTYPE type)
 {
 	D3DLIGHT9 light;
 	::ZeroMemory(&light, sizeof(light));
 
-	light.Type      = D3DLIGHT_POINT;
-	light.Ambient   = *color * 0.6f;
-	light.Diffuse   = *color;
-	light.Specular  = *color * 0.6f;
-	light.Position  = *position;
-	light.Range        = 1000.0f;
-	light.Falloff      = 1.0f;
-	light.Attenuation0 = 1.0f;
-	light.Attenuation1 = 0.0f;
-	light.Attenuation2 = 0.0f;
+	D3DXCOLOR color = D3DXCOLOR(1.f, 1.f, 1.f, 1.f);
+	D3DXVECTOR3 position = D3DXVECTOR3(0.f, 0.f, 5.f);
+	D3DXVECTOR3 direction = D3DXVECTOR3(0.f, -1.f, -1.f);
+
+	light.Type = type;
+
+	light.Ambient   = color * 0.2f;
+	light.Diffuse   = color;
+	light.Specular  = color * 0.6f;
+
+	light.Position  = position;
+	light.Direction  = direction;
+
+	light.Range        = 8.0f;
+	light.Falloff      = 4.0f;
+
+	light.Attenuation0 = 0.1f;
+	light.Attenuation1 = 0.1f;
+	light.Attenuation2 = 0.1f;
+
+	light.Theta = 1.f;
+	light.Phi = 2.f;
 
 	return light;
 }
