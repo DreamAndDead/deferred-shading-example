@@ -14,7 +14,7 @@ The example project for blog [deferred shading method in directx9][].
 1. Open .sln in VS2017 (suggested)
 2. F5 run in Debug or Release x64 profile
 
-![](./demo.png)
+![](./demo.gif)
 
 ## control
 
