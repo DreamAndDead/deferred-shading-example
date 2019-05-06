@@ -19,9 +19,9 @@ The example project for blog [deferred shading method in directx9][].
 ## control
 
 Change camera
-- direction with `¡û, ¡ú` 
-- radius with `¡ü, ¡ý`
-- height with `Ctrl + ¡ü,¡ý`
+- direction with `<left>, <right>` 
+- radius with `<up>, <down>`
+- height with `Ctrl + <up>, <down>`
 
 Exit app
 - with `Esc`
