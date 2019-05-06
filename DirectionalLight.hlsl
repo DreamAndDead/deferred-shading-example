@@ -161,9 +161,9 @@ PS_OUTPUT PS_Main(VS_OUTPUT input)
     float shininess = specular.w * 256.f;
 
     float3 I_amb = diffuse.rgb * light_ambient;
-	float3 I_tot = I_amb + lighting(diffuse.rgb, normal.xyz, position.xyz, specular.rgb, shininess);
+    float3 I_tot = I_amb + lighting(diffuse.rgb, normal.xyz, position.xyz, specular.rgb, shininess);
 
-	output.color = float4(I_tot + stash.rgb, 1);
+    output.color = float4(I_tot + stash.rgb, 1);
     return output;
 }
 

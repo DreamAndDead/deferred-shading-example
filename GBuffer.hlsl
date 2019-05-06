@@ -2,8 +2,8 @@ matrix world;
 matrix view;
 matrix proj;
 
-float3 blue = { .0f, .0f, 1.0f};
-float3 white = { 1.0f, 1.0f, 1.0f};
+float3 blue = { .0f, .0f, 1.0f };
+float3 white = { 1.0f, 1.0f, 1.0f };
 
 float shininess = 5.0f;
 

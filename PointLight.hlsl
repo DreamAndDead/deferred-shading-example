@@ -110,20 +110,20 @@ struct PS_OUTPUT
 
 float dist_factor(float3 point_view_pos)
 {
-	float4 light_pos = mul(float4(light_position, 1), view);
-	float dist = distance(point_view_pos, light_pos.xyz / light_pos.w);
+    float4 light_pos = mul(float4(light_position, 1), view);
+    float dist = distance(point_view_pos, light_pos.xyz / light_pos.w);
 
-	float dist_att;
-	if (dist > light_range)
-	{
-		dist_att = 0;
-	}
-	else
-	{
-		dist_att = 1 / (light_attenuation0 + light_attenuation1 * dist + light_attenuation2 * dist * dist);
-	}
+    float dist_att;
+    if (dist > light_range)
+    {
+        dist_att = 0;
+    }
+    else
+    {
+        dist_att = 1 / (light_attenuation0 + light_attenuation1 * dist + light_attenuation2 * dist * dist);
+    }
 
-	return dist_att;
+    return dist_att;
 }
 
 /*
@@ -135,22 +135,22 @@ float dist_factor(float3 point_view_pos)
  */
 float3 lighting(float3 diffuse, float3 normal, float3 position, float3 specular, float shininess)
 {
-	float3 I_diff, I_spec;
-	float3 l, v, n, h;
-	float att, spot;
+    float3 I_diff, I_spec;
+    float3 l, v, n, h;
+    float att, spot;
 
-	att = dist_factor(position);
+    att = dist_factor(position);
     spot = 1;
 
-	n = normalize(normal);
-	v = normalize(-position);
+    n = normalize(normal);
+    v = normalize(-position);
 
-	float4 light_pos = mul(float4(light_position, 1), view);
-	l = normalize(light_pos.xyz / light_pos.w - position);
-	h = normalize(l + v);
+    float4 light_pos = mul(float4(light_position, 1), view);
+    l = normalize(light_pos.xyz / light_pos.w - position);
+    h = normalize(l + v);
 
-	I_diff = saturate(dot(l, n)) * (diffuse.xyz * light_diffuse.xyz);
-	I_spec = pow(saturate(dot(h, n)), shininess) * (specular.xyz * light_specular.xyz);
+    I_diff = saturate(dot(l, n)) * (diffuse.xyz * light_diffuse.xyz);
+    I_spec = pow(saturate(dot(h, n)), shininess) * (specular.xyz * light_specular.xyz);
 
     return (att * spot) * (I_diff + I_spec);
 }
@@ -183,9 +183,9 @@ PS_OUTPUT PS_Main(VS_OUTPUT input)
     float shininess = specular.w * 256.f;
 
     float3 I_amb = diffuse.rgb * light_ambient;
-	float3 I_tot = I_amb + lighting(diffuse.rgb, normal.xyz, position.xyz, specular.rgb, shininess);
+    float3 I_tot = I_amb + lighting(diffuse.rgb, normal.xyz, position.xyz, specular.rgb, shininess);
 
-	output.color = float4(I_tot + stash.rgb, 1);
+    output.color = float4(I_tot + stash.rgb, 1);
     return output;
 }
 

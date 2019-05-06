@@ -8,19 +8,19 @@
 
 #define LIGHT_NUM 30
 
-/*
- * D3DLIGHT_DIRECTIONAL
- * D3DLIGHT_POINT
- * D3DLIGHT_SPOT
- */
+ /*
+  * D3DLIGHT_DIRECTIONAL
+  * D3DLIGHT_POINT
+  * D3DLIGHT_SPOT
+  */
 #define LIGHT_TYPE D3DLIGHT_POINT
 
-/*
- * in x-y plane, place plenty of balls and show the moving lights
- *
- * -X_Y_PLANE_LIMIT <= x <= X_Y_PLANE_LIMIT
- * -X_Y_PLANE_LIMIT <= y <= X_Y_PLANE_LIMIT
-*/
+  /*
+   * in x-y plane, place plenty of balls and show the moving lights
+   *
+   * -X_Y_PLANE_LIMIT <= x <= X_Y_PLANE_LIMIT
+   * -X_Y_PLANE_LIMIT <= y <= X_Y_PLANE_LIMIT
+  */
 #define X_Y_PLANE_LIMIT 15
 
 IDirect3DDevice9* Device = 0;
