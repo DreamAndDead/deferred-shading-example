@@ -269,7 +269,8 @@ bool Setup()
 
 	// init lights here
 	for (int i = 0; i < LIGHT_NUM; i++) {
-		lights[i] = d3d::InitLight(D3DLIGHT_POINT);
+		//lights[i] = d3d::InitLight(D3DLIGHT_POINT);
+		lights[i] = d3d::InitLight(D3DLIGHT_SPOT);
 
 		// random position
 		lights[i].Position.x = rand() % (LIGHT_MOVEMENT_LIMIT * 2) - LIGHT_MOVEMENT_LIMIT;
@@ -405,7 +406,6 @@ void deferredPipeline()
 		effect->SetFloat(tanHalfFovHandle, TanHalfFov);
 
 
-		// light parameters here
 		D3DXHANDLE lightAmbientHandle = effect->GetParameterByName(0, "light_ambient");
 		D3DXHANDLE lightDiffuseHandle = effect->GetParameterByName(0, "light_diffuse");
 		D3DXHANDLE lightSpecularHandle = effect->GetParameterByName(0, "light_specular");

@@ -248,7 +248,7 @@ VS_OUTPUT VS_BackFace(VS_INPUT input)
     output.texCoord = norm_proj_pos.xy * float2(0.5, -0.5) + float2(0.5, 0.5) + 0.5 / screenSize;
 
     return output;
-};
+}
 
 Technique Plain
 {
@@ -267,7 +267,6 @@ Technique StencilCulling
         PixelShader = compile ps_3_0 PS1();
 
         ColorWriteEnable = 0;
-        //ColorWriteEnable = 0xFFFFFFFF;
         ZWriteEnable = 0;
         ZFunc = LESS;
 

@@ -1,5 +1,7 @@
 // spot light
+matrix world;
 matrix view;
+matrix proj;
 
 float2 screenSize;
 float viewAspect;
@@ -221,6 +223,65 @@ PS_OUTPUT PS_Main(VS_OUTPUT input)
     return output;
 }
 
+
+struct VS1_IN
+{
+    float4 pos : POSITION;
+};
+
+struct VS1_OUT
+{
+    float4 pos : POSITION;
+};
+
+struct PS1_OUT
+{
+    float4 color : COLOR0;
+};
+
+VS1_OUT VS1(VS1_IN input)
+{
+    VS1_OUT output;
+
+    float4 p = input.pos;
+
+    float4x4 worldViewProj = mul(mul(world, view), proj);
+    p = mul(p, worldViewProj);
+
+    output.pos = p;
+
+    return output;
+}
+
+PS1_OUT PS1(VS1_OUT input)
+{
+    PS1_OUT output;
+    output.color = float4(1, 1, 1, 1);
+    return output;
+}
+
+VS_OUTPUT VS_BackFace(VS_INPUT input)
+{
+    VS_OUTPUT output;
+
+    float4 local_pos = input.position;
+    float4x4 worldViewProj = mul(mul(world, view), proj);
+    float4 proj_pos = mul(local_pos, worldViewProj);
+
+    output.position = proj_pos;
+
+    float4 norm_proj_pos = proj_pos / proj_pos.w;
+    output.cameraEye = float3(norm_proj_pos.x * tanHalfFov * viewAspect, norm_proj_pos.y * tanHalfFov, 1);
+
+    // -0.5, because the tex coord and proj screen coord are opposite
+    // 0.5 / screenParam
+    // ref https://docs.microsoft.com/en-us/windows/desktop/direct3d10/d3d10-graphics-programming-guide-resources-coordinates
+    // and https://docs.microsoft.com/en-us/windows/desktop/direct3d9/directly-mapping-texels-to-pixels
+    output.texCoord = norm_proj_pos.xy * float2(0.5, -0.5) + float2(0.5, 0.5) + 0.5 / screenSize;
+
+    return output;
+}
+
 Technique Plain
 {
     Pass Light
@@ -234,7 +295,38 @@ Technique StencilCulling
 {
     Pass FrontFace
     {
-        VertexShader = compile vs_3_0 VS_Main();
+        VertexShader = compile vs_3_0 VS1();
+        PixelShader = compile ps_3_0 PS1();
+
+        ColorWriteEnable = 0;
+        ZWriteEnable = 0;
+        ZFunc = LESS;
+
+        StencilEnable = true;
+        StencilFunc = ALWAYS;
+        StencilZFail = REPLACE;
+        StencilPass = KEEP;
+        StencilRef = 1;
+        StencilMask = 0xFFFFFFFF;
+
+        CullMode = CCW;
+    }
+    Pass BackFace
+    {
+        VertexShader = compile vs_3_0 VS_BackFace();
         PixelShader = compile ps_3_0 PS_Main();
+
+        ColorWriteEnable = 0xFFFFFFFF;
+        ZWriteEnable = 0;
+        ZFunc = GREATEREQUAL;
+
+        StencilEnable = true;
+        StencilFunc = EQUAL;
+        StencilPass = KEEP;
+        StencilRef = 0;
+        StencilMask = 0xFFFFFFFF;
+
+        CullMode = CW;
+
     }
 }
