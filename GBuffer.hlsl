@@ -17,7 +17,7 @@ struct VS_OUTPUT
 {
     float4 position : POSITION0;
     float4 normal : NORMAL0;
-    float3 depth : TEXCOORD0;
+    float2 depth : TEXCOORD0;
 };
 
 struct PS_OUTPUT
@@ -33,7 +33,6 @@ VS_OUTPUT VS_Main(VS_INPUT input)
     VS_OUTPUT output;
 
     matrix worldView = mul(world, view);
-
     float4 viewPos = mul(input.position, worldView);
     float4 projPos = mul(viewPos, proj);
 
@@ -41,12 +40,12 @@ VS_OUTPUT VS_Main(VS_INPUT input)
 
     float4 n = mul(float4(input.normal.xyz, 0), worldView);
     n = normalize(n);
-    // ATTENTION: normal range [-1, 1] => color range [0, 1]
+    // store normal from range [-1, 1] => color range [0, 1]
     output.normal = float4(n.xyz / 2 + 0.5f, 0);
 
     // depth in view coordinate, store in x
     float depth = (float) viewPos.z / (float) viewPos.w;
-    output.depth = float3(depth, 0, 0);
+    output.depth = float2(depth, 0);
 
     return output;
 };
@@ -57,17 +56,19 @@ PS_OUTPUT PS_Main(VS_OUTPUT input)
 
     output.normal = float4(input.normal.xyz, 0);
 
+    // zip depth in color range [0, 1]
     float depth = input.depth.x;
     float int_depth = floor(depth);
     float dec_depth = frac(depth);
     output.depth = float4((int_depth / 256.f) / 256.f, (int_depth % 256.f) / 256.f, dec_depth, 0);
+
     output.diffuse = float4(blue, 0);
     output.specular = float4(white, shininess / 256.f);
 
     return output;
 }
 
-Technique main
+Technique gbuffer
 {
     Pass P0
     {

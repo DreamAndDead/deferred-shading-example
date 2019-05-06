@@ -224,24 +224,24 @@ PS_OUTPUT PS_Main(VS_OUTPUT input)
 }
 
 
-struct VS1_IN
+struct VS_IN
 {
     float4 pos : POSITION;
 };
 
-struct VS1_OUT
+struct VS_OUT
 {
     float4 pos : POSITION;
 };
 
-struct PS1_OUT
+struct PS_OUT
 {
     float4 color : COLOR0;
 };
 
-VS1_OUT VS1(VS1_IN input)
+VS_OUT VS_FrontFace(VS_IN input)
 {
-    VS1_OUT output;
+    VS_OUT output;
 
     float4 p = input.pos;
 
@@ -253,9 +253,9 @@ VS1_OUT VS1(VS1_IN input)
     return output;
 }
 
-PS1_OUT PS1(VS1_OUT input)
+PS_OUT PS_FrontFace(VS_OUT input)
 {
-    PS1_OUT output;
+    PS_OUT output;
     output.color = float4(1, 1, 1, 1);
     return output;
 }
@@ -295,8 +295,8 @@ Technique StencilCulling
 {
     Pass FrontFace
     {
-        VertexShader = compile vs_3_0 VS1();
-        PixelShader = compile ps_3_0 PS1();
+        VertexShader = compile vs_3_0 VS_FrontFace();
+        PixelShader = compile ps_3_0 PS_FrontFace();
 
         ColorWriteEnable = 0;
         ZWriteEnable = 0;
