@@ -12,7 +12,7 @@ The example project for blog [deferred shading method in directx9][].
 ## run
 
 1. Open .sln in VS2017 (suggested)
-2. F5 run in Debug or Release x64 profile
+2. F5 run in Debug/Release x64 profile or download [release exe][v0.1 release] and run
 
 ![](./demo.gif)
 
@@ -28,3 +28,5 @@ Exit app
 
 
 [deferred shading method in directx9]: https://dreamanddead.github.io/2019/04/26/deferred-shading.html
+
+[v0.1 release]: https://github.com/DreamAndDead/deferred-shading-example/releases/download/v0.1/deferred-shading-demo.zip
