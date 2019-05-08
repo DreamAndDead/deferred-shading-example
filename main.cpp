@@ -68,6 +68,7 @@ IDirect3DSurface9* diffuseSurface = 0;
 IDirect3DTexture9* specularTex = 0;
 IDirect3DSurface9* specularSurface = 0;
 
+/* stash surface, accumulate the multiple light illumination */
 IDirect3DTexture9* stashTex = 0;
 IDirect3DSurface9* stashSurface = 0;
 
@@ -142,7 +143,7 @@ bool Setup()
 		return false;
 	}
 
-	/* prepare textures for G-Buffer */
+	/* prepare textures for G-buffer */
 	if (!SetupTexture(&normalTex, &normalSurface)) {
 		return false;
 	}
@@ -222,7 +223,7 @@ bool Setup()
 
 void SetMRT()
 {
-	// save origin render target and resume later
+	// save origin frame buffer render target and resume later
 	Device->GetRenderTarget(0, &originRenderTarget);
 
 	Device->SetRenderTarget(0, normalSurface);
@@ -255,7 +256,7 @@ void DrawSphere()
 
 void DeferredPipeline()
 {
-	/* G-Buffer phase */
+	/* G-buffer stage */
 	SetMRT();
 	Device->Clear(0, 0, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL, 0x00000000, 1.0f, 0);
 
@@ -292,7 +293,7 @@ void DeferredPipeline()
 
 	Device->EndScene();
 
-	/* deferred shading phase */
+	/* deferred shading stage */
 	ResumeOriginRender();
 	Device->Clear(0, 0, D3DCLEAR_TARGET | D3DCLEAR_STENCIL, 0x00000000, 1.0f, 0);
 	Device->ColorFill(stashSurface, NULL, D3DXCOLOR(0.f, 0.f, 0.f, 0.f));
@@ -487,10 +488,11 @@ bool Display(float timeDelta)
 
 		D3DXMatrixPerspectiveFovLH(
 			&proj,
-			Fov,
-			ViewAspect,
-			1.0f,
-			1000.0f);
+			Fov,        // fov  angle
+			ViewAspect, // view aspect
+			1.0f,       // near plane
+			1000.0f     // far  plane
+		);
 
 		/* move lights in x-y plane */
 		for (int i = 0; i < LIGHT_NUM; i++) {

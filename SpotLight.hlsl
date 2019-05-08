@@ -300,7 +300,7 @@ Technique StencilCulling
 
         ColorWriteEnable = 0;
         ZWriteEnable = 0;
-        ZFunc = LESS;
+        ZFunc = LESSEQUAL;
 
         StencilEnable = true;
         StencilFunc = ALWAYS;
@@ -322,11 +322,10 @@ Technique StencilCulling
 
         StencilEnable = true;
         StencilFunc = EQUAL;
-        StencilPass = KEEP;
+        StencilPass = ZERO;
         StencilRef = 0;
         StencilMask = 0xFFFFFFFF;
 
         CullMode = CW;
-
     }
 }
