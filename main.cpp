@@ -2,7 +2,7 @@
 #include "d3dUtility.h"
 
 /*
- * comment next line if you do not want use stencil culling algorithm
+ * comment next line if you don't want use stencil culling algorithm
  */
 #define STENCIL_CULLING
 
@@ -68,7 +68,7 @@ IDirect3DSurface9* diffuseSurface = 0;
 IDirect3DTexture9* specularTex = 0;
 IDirect3DSurface9* specularSurface = 0;
 
-/* stash surface, accumulate the multiple light illumination */
+/* stash surface, to accumulate the multiple light illumination */
 IDirect3DTexture9* stashTex = 0;
 IDirect3DSurface9* stashSurface = 0;
 
@@ -143,7 +143,7 @@ bool Setup()
 		return false;
 	}
 
-	/* prepare textures for G-buffer */
+	/* prepare G-buffer textures */
 	if (!SetupTexture(&normalTex, &normalSurface)) {
 		return false;
 	}
@@ -292,6 +292,7 @@ void DeferredPipeline()
 	}
 
 	Device->EndScene();
+
 
 	/* deferred shading stage */
 	ResumeOriginRender();
@@ -444,6 +445,7 @@ void DeferredPipeline()
 
 	Device->EndScene();
 
+
 	Device->Present(0, 0, 0, 0);
 }
 
@@ -494,7 +496,7 @@ bool Display(float timeDelta)
 			1000.0f     // far  plane
 		);
 
-		/* move lights in x-y plane */
+		/* lights move in x-y plane */
 		for (int i = 0; i < LIGHT_NUM; i++) {
 			D3DVECTOR p = lights[i].Position;
 
